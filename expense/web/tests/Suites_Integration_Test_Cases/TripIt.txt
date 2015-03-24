@@ -1,0 +1,97 @@
+*** Settings ***
+Documentation     /* Setup Tripit Integraton */
+Suite Setup       Set Server
+Test Teardown     Close All Browsers
+Resource          ../../conf/selenium_connect.txt
+Library           Selenium2Library
+
+*** Test Cases ***
+TC_Setup TripIt Online Integration By Individual
+    [Documentation]    Setup TripIt integration by individual
+    [Tags]    Smoke Testing    Setup TripIt    Suites Integration    Completed    Not Mailinator
+    #--- STEP 1 ---: User logs in as paid individual to ExpenseCloud page and goes to Add-Ons page
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Disconnect Tripit If Exists
+    Click Ec Link    settings    tripit_connect    ${EMPTY}
+    Title Should Be    TripIt | Online travel itinerary and trip planner
+    Input TripIt Account And Submit    ${tripit_user_id}    ${tripit_password}
+    Page Should Contain Element    xpath=.//div[contains(@class, 'success')]/p[contains(.,'Connect TripIt Successfully.')]
+    Click Ec Link    travels    trips    ${EMPTY}
+    Wait Until Page Contains Element    ${xpath_ec_total}    7s
+    ${ec_re_total}=    Get Text    ${xpath_ec_total}
+    Should Be True    ${ec_re_total}    # Passes if ${ec_re_total} is not zero
+    ${start_tripdate}=    Get Text    xpath=.//div[@data-row='0']/div[@data-col='0']
+    Log    ${start_tripdate}
+    ${end_tripdate}=    Get Text    xpath=.//div[@data-row='0']/div[@data-col='1']
+    Log    ${end_tripdate}
+    Click Ec Link    expenses    active    ${EMPTY}
+    Wait Until Expense Active Page Load
+    Delete All Current Expenses If Exists
+    # Expense out TripIt
+    ${prev_start_tripdate}=    Get Prev Date    ${start_tripdate}    1
+    Log    ${prev_start_tripdate}
+    Create Expense And Input Basic Values    ${prev_start_tripdate}    New expense with previous start Trip date    meals    ${EMPTY}    150    ${EMPTY}
+    # Expense out TripIt
+    ${next_end_tripdate}=    Get Next Date    ${end_tripdate}    1
+    Log    ${next_end_tripdate}
+    Create Expense And Input Basic Values    ${next_end_tripdate}    New expense with next end Trip date    meals    ${EMPTY}    120    ${EMPTY}
+    # Expense in TripIt
+    ${next_start_tripdate}=    Get Next Date    ${start_tripdate}    1
+    Log    ${next_start_tripdate}
+    Create Expense And Input Basic Values    ${next_start_tripdate}    New expense with date in Trip date    meals    ${EMPTY}    120    ${EMPTY}
+    Wait Until Page Contains    New expense with date in Trip date    7s
+    Verify Expense Created Not In TripIt    New expense with previous start Trip date
+    Verify Expense Created Not In TripIt    New expense with next end Trip date
+    Verify Expense Created In TripIt    New expense with date in Trip date
+
+*** Keywords ***
+Verify Expense Created In TripIt
+    [Arguments]    ${merchant}
+    [Documentation]    SUITE_KEY: Verify expense created in TripIt integration
+    Page Should Contain Element    xpath=.//div[@id='grid']//div[contains(@class,'lhv-table-scroll-vertical')]/div[contains(@class,'odd')]/div[contains(.,'${merchant}')]
+
+Verify Expense Created Not In TripIt
+    [Arguments]    ${merchant}
+    [Documentation]    SUITE_KEY: Verify expense not create in TripIt integration
+    Page Should Contain Element    xpath=.//div[@id='grid']//div[contains(@class,'lhv-table-scroll-vertical')]/div[contains(@class,'even')]/div[contains(.,'${merchant}')]
+
+Input TripIt Account And Submit
+    [Arguments]    ${tripit_user_id}    ${tripit_password}
+    [Documentation]    SUITE_KEY: Input TripIt account
+    Input Text    id=email_address    ${tripit_user_id}    # Input username
+    Input Text    id=password    ${tripit_password}    # Input password
+    Click Element    //*[@id='signin_form']/button    # Submit login
+
+Disconnect Tripit If Exists
+    [Documentation]    SUITE_KEY: Check TripIt exist, Disconnect TripIt if exist.
+    Click Setting Menu    settings    addons    ${EMPTY}
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    id=lnkSetupTripit    # Check TripIt installed or not
+    Run Keyword If    ${value}    Disconnect Tripit    ELSE    Log    Button settings tripit not exists.    # Disconnect if exist.
+
+Disconnect Tripit
+    [Documentation]    SUB keyword for "Disconnect Tripit If Exists": Disconnect TripIt
+    Click Element    id=lnkSetupTripit
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[contains(@style,'display: block;')]//*[@id='dialogTripitSetting']    # Check dialog setting tripit
+    Run Keyword If    ${value}    Click Tripit Form    btnDisconnect    ELSE    Log    Button disconnect tripit not exists.
+    ...    warn    # Disconnect
+    Sleep    3s
+    Wait Until Page Contains Element    id=tripitInfo    7s    # Verify button install tripit display
+    Page Should Not Contain Element    id=lnkSetupTripit
+
+Click Tripit Form
+    [Arguments]    ${id_btn}
+    [Documentation]    SUB keyword for "Disconnect Tripit": Click on dialog setting TripIt form.
+    ...    Ex: Click Tripit Form | btnDisconnect / Click Tripit Form | btnResyncTripit / Click Tripit Form | btnSave
+    Verify Tripit Form    ${tripit_user_id}
+    Click Button    id=${id_btn}
+
+Verify Tripit Form
+    [Arguments]    ${tripit_user_id}
+    [Documentation]    SUB keyword for "Click Tripit Form": Verify dialog TripIt form display with all elements
+    Page Should Contain Element    xpath=.//*[@id='TripitSettingFrom']//strong[contains(.,'Tripit user : ${tripit_user_id}')]
+    Page Should Contain Button    xpath=.//*[@id='TripitSettingFrom']//input[@id='btnDisconnect']
+    Page Should Contain Button    xpath=.//*[@id='TripitSettingFrom']//input[@id='btnResyncTripit']
+    Page Should Contain Button    xpath=.//*[@id='TripitSettingFrom']//input[@id='btnSave']
+    Page Should Contain Checkbox    xpath=.//*[@id='TripitSettingFrom']//input[@id='chkImportAir']
+    Page Should Contain Checkbox    xpath=.//*[@id='TripitSettingFrom']//input[@id='chkImportCar']
+    Page Should Contain Checkbox    xpath=.//*[@id='TripitSettingFrom']//input[@id='chkImportLodging']

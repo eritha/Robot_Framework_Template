@@ -1,0 +1,567 @@
+*** Settings ***
+Documentation     ExpenseCloud Company Per Diem policy
+Suite Setup       Set Server
+Test Teardown     Close All Browsers
+Resource          ../../conf/selenium_connect.txt
+Library           Selenium2Library
+
+*** Variables ***
+${expense_site}    https://dev02.app7.com/
+${unsubmitted_expenses}    Unsubmitted Expenses
+#XPATH:
+#VALUES
+#NOTE IF YOU CHANGE THESE VALUES YOU ALSO NEED TO UPDATE THE VALUES FOR Set Basic Company Policies Arguments
+${emptyspace}     ${EMPTY}
+${receipt_for_amounts}    100
+${date_of_expense_over}    1
+${max_ex_amount}    100
+${max_ex_distance}    32
+${Unknown_response}    No
+${location_LA}    Los Angeles
+
+*** Test Cases ***
+TCB0_Basic flow (B) - Create Company Per Diem policy by paid CO (0-sanityCheck)
+    [Documentation]    This is smoke testing for suite "Create Company Per Diem policy".
+    [Tags]    Smoke Testing    Per Diem Policies    Policies    Completed    Not Mailinator
+    # Rule:    Need define name correct with confluence "Basic flow (B) - Create Company Per Diem policy by paid CO (0-sanityCheck)"
+    # Rule:    Create tag for TC, "Smoke Testing" tag for each basic flow TC, add tag completed/ Pending/ Bug for each TC
+    # Suggest: May add Documentation for each TC
+    # User logs in as paid company owner
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    Set Basic Company Policies Clear
+    Delete All Company Per Diem Policies Policies
+    Delete All Company Expense Policies
+    # Set Company Per Diem Policy
+    Click Setting Menu    ${EMPTY}    companies    policies
+    # 1. Set Company Per Diem Policy where Daily Hotels in ${location_LA} does not exceed $${max_ex_amount}
+    Set Company Per Diem Policies    Daily    ${max_ex_amount}    Hotels    Contains    ${location_LA}
+    Wait Until Page Contains    Company Per Diem Policies
+    Sleep    ${TIMESLEEP}
+    #Bug    Page Should Contain Element    xpath=.//div[@id='advancedPoliciesCont']/div/ul/li[2]/label/span[text()='Daily allowable amount of $100 for category Hotels    in location Los Angeles']
+    Page Should Contain    Daily allowable amount of $100 for category Hotels    in location Los Angeles
+    # Fix:    Create expense with input basic value and submit to unsubmited report ( CREATE REPORT DYNAMIC)
+    Click Link    link=Expense Policies
+    Select Main Menu    expenses    active
+    Wait Until Expense Active Page Load
+    ${invalid_max_ex_amount}=    Evaluate    ${max_ex_amount}+1
+    ${less_max_ex_amount}=    Evaluate    ${max_ex_amount}-1
+    ${current_date}=    Get current day
+    ${-8d_period_date}=    Evaluate    ${date_of_expense_over}+8    # Rule date + 8 day
+    ${-5d_period_date}=    Evaluate    ${date_of_expense_over}+5    # Rule date + 5 day
+    ${8prev_period_date}=    Get Prev Date    ${current_date}    ${-8d_period_date}
+    ${5prev_period_date}=    Get Prev Date    ${current_date}    ${-5d_period_date}
+    # 1. Create a hotel expense of the amount of $${invalid_max_ex_amount} in location Los Angeles.
+    Create Expense And Input Detail Values    ${EMPTY}    Hilton    Hotels    ${EMPTY}    ${invalid_max_ex_amount}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${location_LA}
+    ...    ${EMPTY}    ${EMPTY}
+    # 2. Create a hotel expense of the amount of $${less_max_ex_amount} in location Los Angeles.
+    Create Expense And Input Detail Values    ${8prev_period_date}    Hilton 2    Hotels    ${EMPTY}    ${less_max_ex_amount}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${location_LA}
+    ...    ${EMPTY}    ${EMPTY}
+    # 3. Create a hotel expense of the amount of $${invalid_max_ex_amount}.
+    Create Expense And Input Basic Values    ${5prev_period_date}    Hilton 3    Hotels    ${EMPTY}    ${invalid_max_ex_amount}    ${EMPTY}
+    Submit Report All Curent Expense
+    # Verify invalid values for basic expense policies
+    Wait Until Page Contains    Expense Policy Violations    ${TIMEOUT}
+    Page Should Contain    Daily allowable amount of $${max_ex_amount} for category Hotels    in location ${location_LA}
+    #Bug    Verify The Tooltip Expense Policy    Daily allowable amount of $${max_ex_amount} for category Hotels in location ${location_LA}
+    # Clear Company Per Diem Policies
+    Click Setting Menu    ${EMPTY}    companies    policies
+    Delete All Company Per Diem Policies Policies
+
+TCA1_Create weekly per diem policy by CO (A1) - (1-High)
+    [Documentation]    This is smoke testing for suite "Create Company Per Diem policy".
+    [Tags]    Per Diem Policies    Policies    Pending    Not Mailinator
+    # Rule:    Need define name correct with confluence "Alternative flows (A) - Create weekly per diem policy by CO (A1) - (1-High)"
+    # Rule:    Create tag for TC, "Smoke Testing" tag for each basic flow TC, add tag completed/ Pending/ Bug for each TC
+    # Suggest: May add Documentation for each TC
+    # User logs in as paid company owner
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    # Fix: Due to we need create new report to test this case, so we must delete all report exist.
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    Set Basic Company Policies Clear
+    Delete All Company Per Diem Policies Policies
+    Delete All Company Expense Policies
+    # Set Company Per Diem Policy
+    Click Setting Menu    ${EMPTY}    companies    policies
+    # 1. Set Company Per Diem Policy where Weekly, $${max_ex_amount}, Any Category and Location defined
+    Set Company Per Diem Policies    Weekly    ${max_ex_amount}    Hotels    Contains    ${location_LA}
+    Wait Until Page Contains    Company Per Diem Policies
+    Sleep    ${TIMESLEEP}
+    Sleep    ${TIMESLEEP}
+    #Bug    Page Should Contain Element    xpath=.//div[@id='advancedPoliciesCont']/div/ul/li[1]/label/span[text()='Weekly allowable amount of $${max_ex_amount} for category Hotels in location LA']
+    #Bug    Page Should Contain    Weekly allowable amount of $${max_ex_amount} for category Hotels in location LA
+    #    Click Link    link=Expense Policies
+    Select Main Menu    expenses    active
+    Wait Until Expense Active Page Load
+    # 1. Create a hotel expense of the amount of $${invalid_max_ex_amount} in location Los Angeles.
+    Create Expense And Input Detail Values    ${EMPTY}    Hilton    Hotels    ${EMPTY}    ${invalid_max_ex_amount}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${location_LA}
+    ...    ${EMPTY}    ${EMPTY}
+    # 2. Create a hotel expense of the amount of $${less_max_ex_amount} in location Los Angeles.
+    Create Expense And Input Detail Values    ${8prev_period_date}    Hilton 2    Hotels    ${EMPTY}    ${less_max_ex_amount}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${location_LA}
+    ...    ${EMPTY}    ${EMPTY}
+    # 3. Create a hotel expense of the amount of $${invalid_max_ex_amount}.
+    Create Expense And Input Basic Values    ${5prev_period_date}    Hilton 3    Hotels    ${EMPTY}    ${invalid_max_ex_amount}    ${EMPTY}
+    Submit Report All Curent Expense
+    # Verify invalid values for basic expense policies
+    Wait Until Page Contains    Expense Policy Violations    ${TIMEOUT}
+    #    Page Should Contain    Weekly allowable amount of $${greater_max_ex_amount} for category Hotels in location ${location_LA}
+    #    Verify The Tooltip Expense Policy    Weekly allowable amount of $${greater_max_ex_amount} for category Hotels in location ${location_LA}
+    Delete All Company Per Diem Policies Policies
+
+TCA2_Create Monthly Per Diem policy by CO (A2) - (1-High)
+    [Documentation]    This is smoke testing for suite "Create Company Per Diem policy".
+    [Tags]    Per Diem Policies    Policies    Pending    Not Mailinator
+    # Rule:    Need define name correct with confluence "Alternative flows (A) - Create Monthly Per Diem policy by CO (A2) - (1-High)"
+    # Rule:    Create tag for TC, "Smoke Testing" tag for each basic flow TC, add tag completed/ Pending/ Bug for each TC
+    # Suggest: May add Documentation for each TC
+    # User logs in as paid company owner
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    # Fix: Due to we need create new report to test this case, so we must delete all report exist.
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    Set Basic Company Policies Clear
+    Delete All Company Per Diem Policies Policies
+    Delete All Company Expense Policies
+    # Set Company Per Diem Policy
+    Click Setting Menu    ${EMPTY}    companies    policies
+    # 1. Set Company Per Diem Policy where Monthly, $${max_ex_amount}, Any Category and Location defined
+    Set Company Per Diem Policies    Monthly    ${max_ex_amount}    Hotels    Contains    ${location_LA}
+    #    Wait Until Page Contains    Company Per Diem Policies
+    Sleep    ${TIMESLEEP}
+    Sleep    ${TIMESLEEP}
+    #Bug    Page Should Contain Element    xpath=.//div[@id='advancedPoliciesCont']/div/ul/li[1]/label/span[text()='Monthly allowable amount of $${max_ex_amount} for category Hotels    in location Los Angeles']
+    #Bug    Page Should Contain    Monthly allowable amount of $${max_ex_amount} for category Hotels    in location Los Angeles
+    # Fix:    Create expense with input basic value and submit to unsubmited report ( CREATE REPORT DYNAMIC)
+    Select Main Menu    expenses    active
+    Wait Until Expense Active Page Load
+    # 1. Create a hotel expense of the amount of $${invalid_max_ex_amount} in location Los Angeles.
+    Create Expense And Input Detail Values    ${EMPTY}    Hilton    Hotels    ${EMPTY}    ${invalid_max_ex_amount}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${location_LA}
+    ...    ${EMPTY}    ${EMPTY}
+    # 2. Create a hotel expense of the amount of $${less_max_ex_amount} in location Los Angeles.
+    Create Expense And Input Detail Values    ${EMPTY}    Hilton 2    Hotels    ${EMPTY}    ${less_max_ex_amount}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${location_LA}
+    ...    ${EMPTY}    ${EMPTY}
+    # 3. Create a hotel expense of the amount of $${invalid_max_ex_amount}.
+    Create Expense And Input Basic Values    ${EMPTY}    Hilton 3    Hotels    ${EMPTY}    ${invalid_max_ex_amount}    ${EMPTY}
+    Submit Report All Curent Expense
+    # Verify invalid values for basic expense policies
+    Wait Until Page Contains    Expense Policy Violations    ${TIMEOUT}
+    #Bug    Page Should Contain    Monthly allowable amount of $${max_ex_amount} for category Hotels in location Los Angeles
+    #Bug    Verify The Tooltip Expense Policy    Monthly allowable amount of $100 for category Hotels    in location Los Angeles
+    Delete All Company Per Diem Policies Policies
+
+TCA3_Create Per Diem policy by paid Admin (A3) - (1-High)
+    [Documentation]    This is smoke testing for suite "Create Company Per Diem policy".
+    [Tags]    Per Diem Policies    Policies    Admin Pending    Not Mailinator
+    # Rule:    Need define name correct with confluence "Alternative flows (A) - Create Per Diem policy by paid Admin (A3) - (1-High)"
+    # Rule:    Create tag for TC, "Smoke Testing" tag for each basic flow TC, add tag completed/ Pending/ Bug for each TC
+    # Suggest: May add Documentation for each TC
+    # User logs in as paid company admin
+    Log In    ${sever_test}    ${user_comad}    ${pass_general}
+    # Fix: Due to we need create new report to test this case, so we must delete all report exist.
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    Set Basic Company Policies Clear
+    Delete All Company Per Diem Policies Policies
+    Delete All Company Expense Policies
+    # Set Company Per Diem Policy
+    Click Setting Menu    ${EMPTY}    companies    policies
+    # 1. Set Company Per Diem Policy where Daily Hotels in ${location_LA} does not exceed $${max_ex_amount}
+    Set Company Per Diem Policies    Daily    ${max_ex_amount}    Hotels    Contains    ${location_LA}
+    Wait Until Page Contains    Company Per Diem Policies
+    Sleep    ${TIMESLEEP}
+    # 2. Set Company Per Diem Policy where Daily Hotels in ${location_LA} does not exceed $${max_ex_amount}
+    Set Company Per Diem Policies    Weekly    ${max_ex_amount}    Hotels    Contains    ${location_LA}
+    Wait Until Page Contains    Company Per Diem Policies
+    Sleep    ${TIMESLEEP}
+    # 3. Set Company Per Diem Policy where Daily Hotels in ${location_LA} does not exceed $${max_ex_amount}
+    Set Company Per Diem Policies    Monthly    ${max_ex_amount}    Hotels    Contains    ${location_LA}
+    Wait Until Page Contains    Company Per Diem Policies
+    Sleep    ${TIMESLEEP}
+    #Bug    Page Should Contain Element    xpath=.//div[@id='advancedPoliciesCont']/div/ul/li[2]/label/span[text()='Daily allowable amount of $100 for category Hotels    in location Los Angeles']
+    Page Should Contain    Daily allowable amount of $100 for category Hotels    in location Los Angeles
+    # Fix:    Create expense with input basic value and submit to unsubmited report ( CREATE REPORT DYNAMIC)
+    Click Link    link=Expense Policies
+    Select Main Menu    expenses    active
+    Wait Until Expense Active Page Load
+    ${invalid_max_ex_amount}=    Evaluate    ${max_ex_amount}+1
+    ${less_max_ex_amount}=    Evaluate    ${max_ex_amount}-1
+    ${current_date}=    Get current day
+    ${-8d_period_date}=    Evaluate    ${date_of_expense_over}+8    # Rule date + 8 day
+    ${-5d_period_date}=    Evaluate    ${date_of_expense_over}+5    # Rule date + 5 day
+    ${8prev_period_date}=    Get Prev Date    ${current_date}    ${-8d_period_date}
+    ${5prev_period_date}=    Get Prev Date    ${current_date}    ${-5d_period_date}
+    # 1. Create a hotel expense of the amount of $${invalid_max_ex_amount} in location Los Angeles.
+    Create Expense And Input Detail Values    ${EMPTY}    Hilton    Hotels    ${EMPTY}    ${invalid_max_ex_amount}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${location_LA}
+    ...    ${EMPTY}    ${EMPTY}
+    # 2. Create a hotel expense of the amount of $${less_max_ex_amount} in location Los Angeles.
+    Create Expense And Input Detail Values    ${8prev_period_date}    Hilton 2    Hotels    ${EMPTY}    ${less_max_ex_amount}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${location_LA}
+    ...    ${EMPTY}    ${EMPTY}
+    # 3. Create a hotel expense of the amount of $${invalid_max_ex_amount}.
+    Create Expense And Input Basic Values    ${5prev_period_date}    Hilton 3    Hotels    ${EMPTY}    ${invalid_max_ex_amount}    ${EMPTY}
+    Submit Report All Curent Expense
+    # Verify invalid values for basic expense policies
+    Wait Until Page Contains    Expense Policy Violations    ${TIMEOUT}
+    Page Should Contain    Daily allowable amount of $${max_ex_amount} for category Hotels    in location ${location_LA}
+    #Bug    Verify The Tooltip Expense Policy    Daily allowable amount of $${max_ex_amount} for category Hotels in location ${location_LA}
+    # Clear Company Per Diem Policies
+    Click Setting Menu    ${EMPTY}    companies    policies
+    Delete All Company Per Diem Policies Policies
+
+TCA4_Create Per Diem policy by an employee (A4) - (2-Medium)
+    [Documentation]    This is smoke testing for suite "Create Company Per Diem policy".
+    [Tags]    Per Diem Policies    User    Policies    Pending    Not Mailinator
+    # Rule:    Need define name correct with confluence "Alternative flows (A) - Create Per Diem policy by an employee (A4) - (2-Medium)"
+    # Rule:    Create tag for TC, "Smoke Testing" tag for each basic flow TC, add tag completed/ Pending/ Bug for each TC
+    # Suggest: May add Documentation for each TC
+    # User logs in as an employee in a company
+    Log In    ${sever_test}    ${user_employee}    ${pass_general}
+    Click Setting Menu    ${EMPTY}    companies    policies
+    Page Should Contain    You don't have permission to change the company policies. Please contact your administrator.
+
+TCA5_Create Per Diem policy by free user belongs to a company (A5) - (2-Medium)
+    [Documentation]    This is smoke testing for suite "Create Company Per Diem policy".
+    [Tags]    Per Diem Policies    User    Policies    Pending    Not Mailinator
+    # Rule:    Need define name correct with confluence "Alternative flows (A) - Create Per Diem policy by free user belongs to a company (A5) - (2-Medium)"
+    # Rule:    Create tag for TC, "Smoke Testing" tag for each basic flow TC, add tag completed/ Pending/ Bug for each TC
+    # Suggest: May add Documentation for each TC
+    # User logs in as a free user who belongs to a company
+    Log In    ${sever_test}    ${user_freeco}    ${pass_general}
+    Click Setting Menu    ${EMPTY}    companies    policies
+    Page Should Contain    Use this page to set up and manage expense policies. Policies can be utilized by yourself or all users within your company. This is a premium feature and requires a subscription plan for each user to access.
+
+TCA6_Create Per Diem policy by individual (A6) - (2-Medium)
+    [Documentation]    This is smoke testing for suite "Create Company Per Diem policy".
+    [Tags]    Per Diem Policies    User    Policies    Pending    Not Mailinator
+    # Rule:    Need define name correct with confluence "Alternative flows (A) - Create Per Diem policy by individual (A6) - (2-Medium)"
+    # Rule:    Create tag for TC, "Smoke Testing" tag for each basic flow TC, add tag completed/ Pending/ Bug for each TC
+    # Suggest: May add Documentation for each TC
+    # User logs in as a free user who does not belong to a company
+    Log In    ${sever_test}    ${user_freeco}    ${pass_general}
+    Click Setting Menu    ${EMPTY}    companies    policies
+    Page Should Contain    Use this page to set up and manage expense policies. Policies can be utilized by yourself or all users within your company. This is a premium feature and requires a subscription plan for each user to access.
+
+TCA7_Create Per Diem Policies with invalid values (A7) - (2-Medium)
+    [Documentation]    This is smoke testing for suite "Create Company Per Diem policy".
+    [Tags]    Per Diem Policies    User    Policies    Pending    Not Mailinator
+    # Rule:    Need define name correct with confluence "Alternative flows (A) - Create Per Diem Policies with invalid values (A7) - (2-Medium)"
+    # Rule:    Create tag for TC, "Smoke Testing" tag for each basic flow TC, add tag completed/ Pending/ Bug for each TC
+    # Suggest: May add Documentation for each TC
+    # User logs in as admin user
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Click Setting Menu    ${EMPTY}    companies    policies
+    # 1. User doesn't fill in anything and clicks Save button
+    Click Element    xpath=.//div[@id='createPerDiemPoliciesCont']/div[3]/div[2]/i/i/span
+    Page Should Contain    Your daily allowable amount must be numeric and greater than 0
+    Click Element    xpath=.//div[5]/div/a/span
+    # 2. User enters <string> to Amount text box and clicks Save button
+    Input Text    id=per_diem_amount    ${Unknown_response}
+    Click Element    xpath=.//div[@id='createPerDiemPoliciesCont']/div[3]/div[2]/i/i/span
+    Page Should Contain    Your daily allowable amount must be numeric and greater than 0
+    Click Element    xpath=.//div[5]/div/a/span
+    # 3. User enters <string> to Amount text box and clicks Add location and enters 'NULL' as location.
+    Input Text    id=per_diem_amount    ${max_ex_amount}
+    Click Button    id=btn_perdiem_add_location
+    Click Element    xpath=.//div[@id='createPerDiemPoliciesCont']/div[3]/div[2]/i/i/span
+    Page Should Contain    The Location cannot be empty. Please correct the error.
+    Click Element    xpath=.//div[5]/div/a/span
+    # 4. User enters <no string> to Amount text box and clicks Add location and enters 'NULL' as location.
+    Input Text    id=per_diem_amount    ${emptyspace}
+    Click Button    id=btn_perdiem_add_location
+    Click Element    xpath=.//div[@id='createPerDiemPoliciesCont']/div[3]/div[2]/i/i/span
+    Page Should Contain    Your daily allowable amount must be numeric and greater than 0
+    Click Element    xpath=.//div[5]/div/a/span
+
+TCA8_Cancel creating Per Diem Policies (A8) - (2-Medium)
+    [Documentation]    This is smoke testing for suite "Create Company Per Diem policy".
+    [Tags]    Per Diem Policies    User    Policies    Pending    Not Mailinator
+    # Rule:    Need define name correct with confluence "Alternative flows (A) - Cancel creating Per Diem Policies (A8) - (2-Medium)"
+    # Rule:    Create tag for TC, "Smoke Testing" tag for each basic flow TC, add tag completed/ Pending/ Bug for each TC
+    # Suggest: May add Documentation for each TC
+    # User logs in as admin user
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    Set Basic Company Policies Clear
+    Delete All Company Per Diem Policies Policies
+    Delete All Company Expense Policies
+    # Set Company Per Diem Policy
+    Click Setting Menu    ${EMPTY}    companies    policies
+    # 1. Set Company Per Diem Policy where Daily Hotels in ${location_LA} does not exceed $${max_ex_amount}
+    Select Dropdown Type Div    ddl_per_diem_template    Daily
+    Input Text    id=per_diem_amount    ${max_ex_amount}
+    Select Dropdown Type Div    ddl_per_diem_category    Hotels
+    Click Button    id=btn_perdiem_add_location
+    Select Dropdown Type Div    ddl_per_diem_location_operator    Contains
+    Input Text    id=per_diem_location_value    ${location_LA}
+    Sleep    ${TIMESLEEP}
+    Sleep    ${TIMESLEEP}
+    Click Link    link=Expense Policies
+    Sleep    ${TIMESLEEP}
+    Sleep    ${TIMESLEEP}
+    Sleep    ${TIMESLEEP}
+    # Verify allowable amount of is Blank field
+
+TCA9_Basic flow (B) - Duplicate Per Diem (A9) - (2-Medium)
+    [Documentation]    This is smoke testing for suite "Create Company Per Diem policy".
+    [Tags]    Per Diem Policies    Policies    Pending    Not Mailinator
+    # Rule:    Need define name correct with confluence "Alternative flows (A) - Basic flow (B) - Duplicate Per Diem (A9) - (2-Medium)"
+    # Rule:    Create tag for TC, "Smoke Testing" tag for each basic flow TC, add tag completed/ Pending/ Bug for each TC
+    # Suggest: May add Documentation for each TC
+    # User logs in as paid company owner
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    Set Basic Company Policies Clear
+    Delete All Company Per Diem Policies Policies
+    Delete All Company Expense Policies
+    # Set Company Per Diem Policy
+    Click Setting Menu    ${EMPTY}    companies    policies
+    # 1. Set Company Per Diem Policy where Daily Hotels in ${location_LA} does not exceed $${max_ex_amount}
+    Set Company Per Diem Policies    Daily    ${max_ex_amount}    Hotels    Contains    ${location_LA}
+    Wait Until Page Contains    Policy saved successfully.
+    Wait Until Page Contains    Company Per Diem Policies
+    Sleep    ${TIMESLEEP}
+    #Bug    Page Should Contain Element    xpath=.//div[@id='advancedPoliciesCont']/div/ul/li[2]/label/span[text()='Daily allowable amount of $100 for category Hotels    in location Los Angeles']
+    Page Should Contain    Daily allowable amount of $100 for category Hotels    in location Los Angeles
+    Set Company Per Diem Policies    Daily    ${max_ex_amount}    Hotels    Contains    ${location_LA}
+    Wait Until Page Contains    Policy updated successfully.
+    Wait Until Page Contains    Company Per Diem Policies
+    Sleep    ${TIMESLEEP}
+    Delete All Company Per Diem Policies Policies
+
+TCA10_Location cannot be blank (A10) - (1-High)
+    [Documentation]    This is smoke testing for suite "Create Company Per Diem policy".
+    [Tags]    Per Diem Policies    User    Policies    Pending    Not Mailinator
+    # Rule:    Need define name correct with confluence "Alternative flows (A) - Location cannot be blank (A10) - (1-High)"
+    # Rule:    Create tag for TC, "Smoke Testing" tag for each basic flow TC, add tag completed/ Pending/ Bug for each TC
+    # Suggest: May add Documentation for each TC
+    # User logs in as paid company owner
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    Set Basic Company Policies Clear
+    Delete All Company Per Diem Policies Policies
+    Delete All Company Expense Policies
+    # Set Company Per Diem Policy
+    Click Setting Menu    ${EMPTY}    companies    policies
+    # 1. Set Company Per Diem Policy where Daily Hotels in ${location_LA} does not exceed $${max_ex_amount}
+    Set Company Per Diem Policies    Daily    ${max_ex_amount}    Hotels    Cannot be blank    ${EMPTY}
+    Wait Until Page Contains    Policy saved successfully.
+    Wait Until Page Contains    Company Per Diem Policies
+    Sleep    ${TIMESLEEP}
+    #Bug    Page Should Contain Element    xpath=.//div[@id='advancedPoliciesCont']/div/ul/li[2]/label/span[text()='Daily allowable amount of $100 for category Hotels in location not blank']
+    Page Should Contain    Daily allowable amount of $100 for category Hotels    in location not blank
+    # Fix:    Create expense with input basic value and submit to unsubmited report ( CREATE REPORT DYNAMIC)
+    Click Link    link=Expense Policies
+    Select Main Menu    expenses    active
+    Wait Until Expense Active Page Load
+    ${invalid_max_ex_amount}=    Evaluate    ${max_ex_amount}+1
+    ${less_max_ex_amount}=    Evaluate    ${max_ex_amount}-1
+    ${current_date}=    Get current day
+    ${-8d_period_date}=    Evaluate    ${date_of_expense_over}+8    # Rule date + 8 day
+    ${-5d_period_date}=    Evaluate    ${date_of_expense_over}+5    # Rule date + 5 day
+    ${8prev_period_date}=    Get Prev Date    ${current_date}    ${-8d_period_date}
+    ${5prev_period_date}=    Get Prev Date    ${current_date}    ${-5d_period_date}
+    # 1. Create a hotel expense of the amount of $${invalid_max_ex_amount} in location Los Angeles.
+    Create Expense And Input Detail Values    ${EMPTY}    Hilton    Hotels    ${EMPTY}    ${invalid_max_ex_amount}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${location_LA}
+    ...    ${EMPTY}    ${EMPTY}
+    # 2. Create a hotel expense of the amount of $${less_max_ex_amount} in location Los Angeles.
+    Create Expense And Input Detail Values    ${8prev_period_date}    Hilton 2    Hotels    ${EMPTY}    ${less_max_ex_amount}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${location_LA}
+    ...    ${EMPTY}    ${EMPTY}
+    # 3. Create a hotel expense of the amount of $${invalid_max_ex_amount}.
+    Create Expense And Input Basic Values    ${5prev_period_date}    Hilton 3    Hotels    ${EMPTY}    ${invalid_max_ex_amount}    ${EMPTY}
+    Submit Report All Curent Expense
+    # Verify invalid values for basic expense policies
+    Wait Until Page Contains    Expense Policy Violations    ${TIMEOUT}
+    #    Page Should Contain    Daily allowable amount of $${max_ex_amount} for category Hotels    in location not blank
+    #Bug    Verify The Tooltip Expense Policy    Daily allowable amount of $${max_ex_amount} for category Hotels    in location not blank
+    # Clear Company Per Diem Policies
+    Click Setting Menu    ${EMPTY}    companies    policies
+    Delete All Company Per Diem Policies Policies
+
+TCA11_Create Per Diem policy while using Personal category (A11) - (2-Medium)
+    [Documentation]    This is smoke testing for suite "Create Company Per Diem policy".
+    [Tags]    Per Diem Policies    User    Policies    Bug    Not Mailinator
+    # Rule:    Need define name correct with confluence "Alternative flows (A) - Create Per Diem policy while using Personal category (A11) - (2-Medium)"
+    # Rule:    Create tag for TC, "Smoke Testing" tag for each basic flow TC, add tag completed/ Pending/ Bug for each TC
+    # Suggest: May add Documentation for each TC
+    # User logs in as paid company owner
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+
+TCA12_Don't add Location while creating Daily Per Diem policy (A12) - (1-High)
+    [Documentation]    This is smoke testing for suite "Create Company Per Diem policy".
+    [Tags]    Per Diem Policies    User    Policies    Pending    Not Mailinator
+    # Rule:    Need define name correct with confluence "Alternative flows (A) - Don't add Location while creating Daily Per Diem policy (A12) - (1-High)"
+    # Rule:    Create tag for TC, "Smoke Testing" tag for each basic flow TC, add tag completed/ Pending/ Bug for each TC
+    # Suggest: May add Documentation for each TC
+    # User logs in as paid company owner
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    Set Basic Company Policies Clear
+    Delete All Company Per Diem Policies Policies
+    Delete All Company Expense Policies
+    # Set Company Per Diem Policy
+    Click Setting Menu    ${EMPTY}    companies    policies
+    # 1. Set Company Per Diem Policy where Daily Hotels in ${location_LA} does not exceed $${max_ex_amount}
+    Set Company Per Diem Policies    Daily    ${max_ex_amount}    Hotels    ${EMPTY}    ${EMPTY}
+    Wait Until Page Contains    Company Per Diem Policies
+    Sleep    ${TIMESLEEP}
+    #Bug    Page Should Contain Element    xpath=.//div[@id='advancedPoliciesCont']/div/ul/li[2]/label/span[text()='Daily allowable amount of $100 for category Hotels    in location Los Angeles']
+    Page Should Contain    Daily allowable amount of $100 for category Hotels    in location Los Angeles
+    # Fix:    Create expense with input basic value and submit to unsubmited report ( CREATE REPORT DYNAMIC)
+    Click Link    link=Expense Policies
+    Select Main Menu    expenses    active
+    Wait Until Expense Active Page Load
+    ${invalid_max_ex_amount}=    Evaluate    ${max_ex_amount}+1
+    ${less_max_ex_amount}=    Evaluate    ${max_ex_amount}-1
+    ${current_date}=    Get current day
+    ${-8d_period_date}=    Evaluate    ${date_of_expense_over}+8    # Rule date + 8 day
+    ${-5d_period_date}=    Evaluate    ${date_of_expense_over}+5    # Rule date + 5 day
+    ${8prev_period_date}=    Get Prev Date    ${current_date}    ${-8d_period_date}
+    ${5prev_period_date}=    Get Prev Date    ${current_date}    ${-5d_period_date}
+    # 1. Create a hotel expense of the amount of $${invalid_max_ex_amount} in location Los Angeles.
+    Create Expense And Input Detail Values    ${EMPTY}    Hilton    Hotels    ${EMPTY}    ${invalid_max_ex_amount}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${location_LA}
+    ...    ${EMPTY}    ${EMPTY}
+    # 2. Create a hotel expense of the amount of $${less_max_ex_amount} in location Los Angeles.
+    Create Expense And Input Detail Values    ${8prev_period_date}    Hilton 2    Hotels    ${EMPTY}    ${less_max_ex_amount}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${location_LA}
+    ...    ${EMPTY}    ${EMPTY}
+    # 3. Create a hotel expense of the amount of $${invalid_max_ex_amount}.
+    Create Expense And Input Basic Values    ${5prev_period_date}    Hilton 3    Hotels    ${EMPTY}    ${invalid_max_ex_amount}    ${EMPTY}
+    Submit Report All Curent Expense
+    # Verify invalid values for basic expense policies
+    Wait Until Page Contains    Expense Policy Violations    ${TIMEOUT}
+    Page Should Contain    Daily allowable amount of $${max_ex_amount} for category Hotels    in location ${location_LA}
+    #Bug    Verify The Tooltip Expense Policy    Daily allowable amount of $${max_ex_amount} for category Hotels in location ${location_LA}
+    # Clear Company Per Diem Policies
+    Click Setting Menu    ${EMPTY}    companies    policies
+    #    Delete All Company Per Diem Policies Policies
+
+TCA13_Don't add Location while creating Monthly Per Diem policy (A13) - (1-High)
+    [Documentation]    This is smoke testing for suite "Create Company Per Diem policy".
+    [Tags]    Per Diem Policies    User    Policies    Pending    Not Mailinator
+    # Rule:    Need define name correct with confluence "Alternative flows (A) - Don't add Location while creating Monthly Per Diem policy (A13) - (1-High)"
+    # Rule:    Create tag for TC, "Smoke Testing" tag for each basic flow TC, add tag completed/ Pending/ Bug for each TC
+    # Suggest: May add Documentation for each TC
+    # User logs in as paid company owner
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    Set Basic Company Policies Clear
+    Delete All Company Per Diem Policies Policies
+    Delete All Company Expense Policies
+    # Set Company Per Diem Policy
+    Click Setting Menu    ${EMPTY}    companies    policies
+    # 1. Set Company Per Diem Policy where Daily Hotels in ${location_LA} does not exceed $${max_ex_amount}
+    Set Company Per Diem Policies    Monthly    ${max_ex_amount}    Hotels    ${EMPTY}    ${EMPTY}
+    Wait Until Page Contains    Company Per Diem Policies
+    Sleep    ${TIMESLEEP}
+    #Bug    Page Should Contain Element    xpath=.//div[@id='advancedPoliciesCont']/div/ul/li[2]/label/span[text()='Daily allowable amount of $100 for category Hotels    in location Los Angeles']
+    Page Should Contain    Monthly allowable amount of $100 for category Hotels
+    # Fix:    Create expense with input basic value and submit to unsubmited report ( CREATE REPORT DYNAMIC)
+    Click Link    link=Expense Policies
+    Select Main Menu    expenses    active
+    Wait Until Expense Active Page Load
+    ${invalid_max_ex_amount}=    Evaluate    ${max_ex_amount}+1
+    ${less_max_ex_amount}=    Evaluate    ${max_ex_amount}-1
+    # 1. Create a hotel expense of the amount of $${invalid_max_ex_amount} in location Los Angeles.
+    Create Expense And Input Detail Values    ${EMPTY}    Hilton    Hotels    ${EMPTY}    ${invalid_max_ex_amount}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${location_LA}
+    ...    ${EMPTY}    ${EMPTY}
+    # 2. Create a hotel expense of the amount of $${less_max_ex_amount} in location Los Angeles.
+    Create Expense And Input Detail Values    ${EMPTY}    Hilton 2    Hotels    ${EMPTY}    ${less_max_ex_amount}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${location_LA}
+    ...    ${EMPTY}    ${EMPTY}
+    # 3. Create a hotel expense of the amount of $${invalid_max_ex_amount}.
+    Create Expense And Input Basic Values    ${EMPTY}    Hilton 3    Hotels    ${EMPTY}    ${invalid_max_ex_amount}    ${EMPTY}
+    Submit Report All Curent Expense
+    # Verify invalid values for basic expense policies
+    Wait Until Page Contains    Expense Policy Violations    ${TIMEOUT}
+    Page Should Contain    Monthly allowable amount of $${max_ex_amount} for category Hotels
+    #Bug    Verify The Tooltip Expense Policy    Monthly allowable amount of $${max_ex_amount} for category Hotels
+    # Clear Company Per Diem Policies
+    Click Setting Menu    ${EMPTY}    companies    policies
+    #    Delete All Company Per Diem Policies Policies
+
+TCA14_Don't add Location while creating Weekly Per Diem policy (A14) - (1-High)
+    [Documentation]    This is smoke testing for suite "Create Company Per Diem policy".
+    [Tags]    Per Diem Policies    User    Policies    Pending    Not Mailinator
+    # Rule:    Need define name correct with confluence "Alternative flows (A) - Don't add Location while creating Weekly Per Diem policy (A14) - (1-High)"
+    # Rule:    Create tag for TC, "Smoke Testing" tag for each basic flow TC, add tag completed/ Pending/ Bug for each TC
+    # Suggest: May add Documentation for each TC
+    # User logs in as paid company owner
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    Set Basic Company Policies Clear
+    Delete All Company Per Diem Policies Policies
+    Delete All Company Expense Policies
+    # Set Company Per Diem Policy
+    Click Setting Menu    ${EMPTY}    companies    policies
+    # 1. Set Company Per Diem Policy where Daily Hotels in ${location_LA} does not exceed $${max_ex_amount}
+    Set Company Per Diem Policies    Weekly    ${max_ex_amount}    Hotels    ${EMPTY}    ${EMPTY}
+    Wait Until Page Contains    Company Per Diem Policies
+    Sleep    ${TIMESLEEP}
+    #Bug    Page Should Contain Element    xpath=.//div[@id='advancedPoliciesCont']/div/ul/li[2]/label/span[text()='Daily allowable amount of $100 for category Hotels    in location Los Angeles']
+    Page Should Contain    Weekly allowable amount of $100 for category Hotels
+    # Fix:    Create expense with input basic value and submit to unsubmited report ( CREATE REPORT DYNAMIC)
+    Click Link    link=Expense Policies
+    Select Main Menu    expenses    active
+    Wait Until Expense Active Page Load
+    ${invalid_max_ex_amount}=    Evaluate    ${max_ex_amount}+1
+    ${less_max_ex_amount}=    Evaluate    ${max_ex_amount}-1
+    # 1. Create a hotel expense of the amount of $${invalid_max_ex_amount} in location Los Angeles.
+    Create Expense And Input Detail Values    ${EMPTY}    Hilton    Hotels    ${EMPTY}    ${invalid_max_ex_amount}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${location_LA}
+    ...    ${EMPTY}    ${EMPTY}
+    # 2. Create a hotel expense of the amount of $${less_max_ex_amount} in location Los Angeles.
+    Create Expense And Input Detail Values    ${EMPTY}    Hilton 2    Hotels    ${EMPTY}    ${less_max_ex_amount}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${location_LA}
+    ...    ${EMPTY}    ${EMPTY}
+    # 3. Create a hotel expense of the amount of $${invalid_max_ex_amount}.
+    Create Expense And Input Basic Values    ${EMPTY}    Hilton 3    Hotels    ${EMPTY}    ${invalid_max_ex_amount}    ${EMPTY}
+    Submit Report All Curent Expense
+    # Verify invalid values for basic expense policies
+    Wait Until Page Contains    Expense Policy Violations    ${TIMEOUT}
+    Page Should Contain    Weekly allowable amount of $${max_ex_amount} for category Hotels
+    #Bug    Verify The Tooltip Expense Policy    Weekly allowable amount of $${max_ex_amount} for category Hotels
+    # Clear Company Per Diem Policies
+    Click Setting Menu    ${EMPTY}    companies    policies
+    #    Delete All Company Per Diem Policies Policies
+
+*** Keywords ***
+Verify The Tooltip Expense Policy
+    [Arguments]    ${msg_tooltip}
+    [Documentation]    COMMON_KEY: Verify the policies icons in each expense policy violation
+    Page Should Contain Element    xpath=.//div[@class='violation-container']/sup[@title='${msg_tooltip}']
+    #    Page Should Contain Element    xpath=.//div[@data-row='0']/div[2]/div/div[@class='violation-container']/sup[@title='${msg_tooltip}']

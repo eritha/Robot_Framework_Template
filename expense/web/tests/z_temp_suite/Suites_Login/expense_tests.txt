@@ -1,0 +1,350 @@
+*** Settings ***
+Documentation     Create, view, edit expense
+Suite Setup       Set Server
+Test Teardown     Close All Browsers
+Resource          ../../conf/selenium_connect.txt
+Library           Selenium2Library
+
+*** Variables ***
+#NOTE: Before run this test suite, Please delete all expense with username "jack@app7.com"
+#And change variable ${value_ec_date} = your current day.
+${timeout}        3
+${timeout_x2}     6
+${menu_ec_active}    /expenses/active
+#ID:
+${id_ec_category}    categoryDropdown
+#XPATH:
+${xpath_ec_checkbox_all}    xpath=.//*[@id='grid']/div[2]/div/div[1]/div/div[1]/span/input
+${xpath_ec_checkbox}    xpath=.//*[@id='grid']/div[2]/div/div[2]/div[1]/div/div[1]/input
+${xpath_ec_date}    xpath=.//*[@id='grid']/div[2]/div/div[2]/div[2]/div[2]/div/input
+${xpath_ec_merchant}    xpath=.//*[@id='grid']/div[2]/div/div[2]/div[2]/div[3]/div/input
+${xpath_ec_category}    xpath=.//*[@id='grid']/div[2]/div/div[2]/div[2]/div[4]/div/input
+${xpath_ec_amount}    xpath=.//*[@id='grid']/div[2]/div/div[2]/div[2]/div[5]/div/input
+${xpath_ec_report}    xpath=.//*[@id='grid']/div[2]/div/div[2]/div[2]/div[6]/div/input
+${xpath_ec_currency}    xpath=.//*[@id='currency_chzn']
+${xpath_ec_row_edit}    xpath=.//*[@id='grid']/div[2]/div/div[2]/div[1]/div/div[3]
+${xpath_ec_total}    xpath=.//strong[@class='lhv-table-paging-total']
+${xpath_ec_popup}    xpath=.//body/div[5]
+#VALUES:
+${value_ec_date}    May 29 14    #NOTE: Please edit this day with your current date, we will create keywork to convert system date later
+${value_ec_merchant}    Air Travel
+${value_ec_category}    Air Travel
+${value_ec_amount}    200
+${value_ec_currency}    USD
+${error_message}    Please enter a valid Amount.
+#${row}           1
+
+*** Test Cases ***
+TC001_Create New Expense Air Travel And Report
+    [Documentation]    Create New Expense "Air Travel"
+    [Tags]    CreateExpense
+    Close All Connections
+    Log In    ${sever_test}    ${user_owner}    ${pass_owner}
+    Select Main Menu    ${menu_ec_active}
+    #>>> Output: Verify System opens active expense page.
+    Title Should Be    TriNet Expense Expenses
+    #--- STEP 2 ---: User clicks on Add New Expense button.
+    Wait Until Page Contains Element    btnAddExpense    ${timeout}
+    Sleep    ${timeout}
+    Click Element    btnAddExpense
+    #>>> Output: Verify System opens calendar picker and add current day to Date column (Not verify current date yet)
+    Get System Date Format MMDDYY
+    Verify System Shows Calendar And Add Current Date
+    #*NOTE:Should convert the system date to format: "May 20 14" OR Wildcard, then compare values
+    Textfield Value Should Be    ${xpath_ec_date}    ${value_ec_date}
+    #>>> Output: Verify Button "Edit detail" is shown under and middle of grid line.
+    Page Should Contain Element    editDetailsButton
+    #--- STEP 3 ---: User add "Merchant"and click on "Category" drop-down to select category type: Select Air Travel
+    Input Text    ${xpath_ec_merchant}    Test add new expense
+    Select Category Expense    ${xpath_ec_category}    ${value_ec_category}
+    #>>> Output: Verify System adds Air Travel as display value.
+    Textfield Value Should Be    ${xpath_ec_category}    ${value_ec_category}
+    #--- STEP 4 ---: User clicks on Edit Detail.
+    Click Element    editDetailsButton
+    #>>> Output: Verify System shows Edit Detail section and there are From/To text boxes above buttons
+    Page Should Contain Element    editDetailsPanel
+    Page Should Contain Element    fromToCont
+    #--- STEP 5 ---: User provides below information and clicks Save button
+    Input Text    ${xpath_ec_merchant}    ${value_ec_merchant}
+    Select Category Expense    ${xpath_ec_category}    ${value_ec_category}
+    Input Text    ${xpath_ec_amount}    ${value_ec_amount}
+    Select Currency Expense    ${xpath_ec_currency}    ${value_ec_currency}
+    Input Text    client    Client 1
+    Input Text    project    Prj 1
+    Input Text    fromTxt    California
+    Input Text    toTxt    New York
+    Click Element    saveEditTranButton
+    ${timeout_x2}    Evaluate    ${timeout}*${2}
+    Wait Until Page Contains Element    ${xpath_ec_total}    ${timeout_x2}
+    #>>> Output: Verify System creates expense and add it to expenses list.
+    Page Should Contain    ${value_ec_date}
+    Page Should Contain    ${value_ec_merchant}
+    #--- STEP 6 ---: User checks on Air Travel and clicks Create Report button.
+    Click Element    ${xpath_ec_checkbox}
+    Click Element    btnCreateReport
+    #>>> Output: Verify System redirects to Report Detail button and add expenses to new report.
+    Title Should Be    TriNet Expense Reports
+    Wait Until Page Contains Element    ${xpath_ec_total}    ${timeout}
+    ${ec_re_total}=    Get Text    ${xpath_ec_total}
+    Should Be True    ${ec_re_total}    # Passes if ${ec_re_total} is not zero
+    #--- STEP 7 ---: User returns to Active Expenses page
+    Select Main Menu    ${menu_ec_active}
+    #>>> Output: Verify Report name is shown in Report field in Air Travel line
+    ${yyyy}    ${mm}    ${dd}    Get Time    year,month,day
+    ${report_date}    Set Variable    ${yyyy}/${mm}/${dd}
+    ${reportName}=    Catenate    Report for    ${user_owner}    ${report_date}
+    Page should contain    ${reportName}
+    #Report for jack@app7.com 2014/05/21
+
+TC002_View And Edit Expense
+    [Documentation]    View And Edit Expense
+    [Tags]    ViewAndEditExpense
+    #--- STEP 1 ---: User logs into ExpenseCloud page and goes to Active Expenses page
+    Log In    ${sever_test}    ${user_owner}    ${pass_owner}
+    Select Main Menu    ${menu_ec_active}
+    ${timeout_x2}    Evaluate    ${timeout}*${2}
+    Wait Until Page Contains Element    ${xpath_ec_total}    ${timeout_x2}
+    #>>> Output: Verify System shows the list of all active expenses that user has created. Each expense in the list show the following information:
+    # Check boxes; Date; Merchant; Category; Amount; Receipt.
+    # Report - this is select box includes all reports that user has created
+    Get System Date Format MMDDYY
+    Verify List Of All Active Expenses
+    #--- STEP 2 ---: User clicks on an existing expense.
+    #Click Element    ${xpath_ec_row_edit}
+    Select Row Expense And Click    0
+    #>>> Output: Verify System highlights this expense and shows:
+    # Edit Detail button below expense.
+    # Date, Merchant, Amount under text box
+    # Category, Report under select box.
+    Verify All Elements With Table Editor
+    #--- STEP 3 ---: User clicks on Date text box.
+    Click Element    ${xpath_ec_date}
+    #>>> Output: Verify System shows Calendar and user can modify Date
+    Verify System Shows Calendar And Modify Date    19
+    #--- STEP 4 ---: User clicks on Amount text-box, enters a numeric value to text box and press Enter key
+    Edit Expense Values    ${xpath_ec_amount}    279
+    #>>> Output: Verify System updates Amount value without error. ,
+    Page Should Contain    279
+    #If user enters a non numeric values to text box
+    Select Row Expense And Click    0
+    Edit Expense Values    ${xpath_ec_amount}    ABC
+    #>>> Output: System will show a warning 'Please enter a valid Amount.' in dialog box
+    Verify Show Message Warning In Dialog Box    ${xpath_ec_popup}    Please enter a valid Amount.
+    #--- STEP 5 ---: User clicks on Merchant text-box, enters new values and presses Enter key
+    Press Key    ${xpath_ec_merchant}    \\13
+    Select Row Expense And Click    0
+    Edit Expense Values    ${xpath_ec_merchant}    Test view and edit expense
+    #>>> Output: Verify System updates Merchant value without error.
+    Page Should Contain    Test view and edit expense
+    #--- STEP 6 ---: User clicks on Category select box
+    Select Row Expense And Click    0
+    #Click Element    ${xpath_ec_row_edit}
+    Click Element    xpath=.//*[@id='grid']/div[2]/div/div[2]/div[2]/div[4]/div/div
+    #>>> Output: Verify System shows drop down contains list categories that sorted by alphabets
+    Element Should Be Visible    categoryDropdownContainer
+    Verify Dropdown Visible Or Not    categoryDropdownContainer    display: block;
+    #???>>> Sorted by alphabets
+    #${list_category}=    Get List Items    categoryDropdown
+    #${list_category_sort}=    Sort List    ${list_category}
+    #Should Be Equal    ${list_category}    ${list_category_sort}
+    #--- STEP 7 ---: User chooses a category from list.
+    Click Category Expense    ${id_ec_category}    Miscellaneous
+    #>>> Output: Verify System hides the drop down and updates category type without error.
+    Textfield Value Should Be    ${xpath_ec_category}    Miscellaneous
+    #If user clicks outside the drop down
+    Click Element    xpath=.//*[@id='grid']/div[2]/div/div[2]/div[2]/div[4]/div/div
+    Click Element    content
+    #>>> Output:System will close it without change.
+    Verify Dropdown Visible Or Not    categoryDropdownContainer    display: none;
+    #--- STEP 8 ---: User clicks on Report select box and choose a report from list
+    Select Dropdown Report    5    ${user_owner}
+    #>>> Output: Verify Systems closes the drop down and adds this expense to the selected report.
+    Page Should Contain Element    xpath=.//div[contains(@class, 'reportDropdown')][contains(@style, 'display: none;')]
+    Textfield Should Contain    ${xpath_ec_report}    ${user_owner}
+    #--- STEP 9 ---: User clicks on Add link and selects a pdf or image file
+    #>>> PENDING FOR HANDLE OPEN DIALOG WINDOWS
+    #Click Element    xpath=.//div[@data-row='0']/div[contains(@class,'c6')]/a
+    #Page Should Contain Element    xpath=.//*[@id='upload_receipt_btn']/input
+    #Click Element    xpath=.//*[@id='upload_receipt_btn']/input
+    #Choose File    C:\Users\Public\Pictures\Sample Pictures\Penguins.jpg
+    #>>> Output: Verify System displays rows contains links:
+    # File name - when user clicks on File name link, system displays the selected image in new tab
+    # Delete
+    # Move to receipts folder
+    # Attach to other transaction
+    #--- STEP 10 ---: User selects Ok button.
+    #>>> Output: Verify System closes Add receipts dialog box and replaces Add button by receipt icon.
+    #--- STEP 11 ---: User hovers on receipt icon
+    #>>> Output: Verify System shows receipt file in tooltip. If user clicks on receipt icon, system will displays receipt file in dialog box.
+    #--- STEP 12 ---: User clicks on Edit Detail button
+    Select Row Expense And Click    0
+    Click Element    editDetailsButton
+    #>>> Output: Verify System displays dialog contains:
+    # Details contains information Date, Merchant, Category, Amount, list Reports
+    Verify List Of All Active Expenses
+    # Text boxes: Client ID, Project, Attendee, Tags, Notes, From, To
+    # Payment methods
+    # Receipt
+    # Currency select box
+    #--- STEP 13 ---: User modifies some information as: Create a new tags; Add notes; Changes payment methods; etc...
+    #--- STEP 14 ---: User selects Save button.
+    #>>> Output: Verify    System closes dialog box and updates changes
+    #--- STEP 15 ---: User clicks on Edit Detail button again.
+    #>>> Output: Verify All changes have saved.
+
+*** Keywords ***
+Create Expense
+    [Arguments]    ${date}    ${merchant}    ${category}    ${amount}    ${report}
+    Click Element    id=btnAddExpense
+    ${value}    Run Keyword And Return Status    Page Should Not Contain Element    xpath=.//*[contains(@class,'lhv-table-editor')][contains(@style,'display: block;')]
+    Run Keyword If    ${value}    Click Element    id=btnAddExpense    ELSE    Log    Page contain table editor already.
+    Select Date Time Picker    ${date}
+    Input Text    ${xpath_ec_merchant}    ${merchant}
+    Select Category Expense    ${xpath_ec_category}    ${category}
+    Input Text    ${xpath_ec_amount}    ${amount}
+    Run Keyword If    '${report}'=='${EMPTY}'    Log    Report empty.    ELSE    Select Dropdown Report    5
+    ...    ${report}
+    Click Element    xpath=.//div[@id='grid']//*[contains(@class,'btn-save-changes')]
+
+Get System Date Format MMDDYY
+    ${value_ec_date}=    Evaluate    time.strftime("%b %d %y", time.localtime())    time
+    Set Suite Variable    ${value_ec_date}
+
+Get report name
+    Report for    Catenate    ${user_owner}    Catenate    ${report_date}
+    Set Suite Variable    ${reportName}
+
+Select Main Menu
+    [Arguments]    ${menu_ec_active}
+    Click Link    ${menu_ec_active}
+
+Select Category Expense
+    [Arguments]    ${xpath_ec_category}    ${value_ec_category}
+    Input Text    ${xpath_ec_category}    ${value_ec_category}
+    Sleep    1s
+    Press Key    ${xpath_ec_category}    \\38
+    Press Key    ${xpath_ec_category}    \\13
+    #Input Expense Values And Submit
+
+Click Category Expense
+    [Arguments]    ${name_ec_category}    ${value_ec_category}
+    Sleep    1s
+    Click Element    xpath=.//*[@id='${name_ec_category}']//a[contains(.,'${value_ec_category}')]
+    Sleep    1s
+
+Select Currency Expense
+    [Arguments]    ${xpath_ec_currency}    ${value_ec_currency}
+    Click Element    ${xpath_ec_currency}/a
+    Input Text    ${xpath_ec_currency}/div/div/input    ${value_ec_currency}
+    Press Key    ${xpath_ec_currency}/div/div/input    \\13
+
+Verify System Shows Calendar And Add Current Date
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    ${xpath_ec_date}    7s
+    Run Keyword If    '${value}' == 'False'    Click Element    ${xpath_ec_date}
+    Wait Until Page Contains Element    ${xpath_ec_date}    7s
+    Textfield Value Should Be    ${xpath_ec_date}    ${value_ec_date}
+    Page Should Contain Element    ui-datepicker-div
+
+Verify System Shows Calendar And Modify Date
+    [Arguments]    ${new_date}
+    Page Should Contain Element    ui-datepicker-div
+    ${current_date}    Get Time    day
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//*[@id='ui-datepicker-div']//a[contains(.,"${current_date}")]    ${timeout}
+    Run Keyword If    ${value}    Change New Date And Return Current Date    ${new_date}    ${current_date}    ELSE    Click Element
+    ...    ${xpath_ec_date}
+
+Change New Date And Return Current Date
+    [Arguments]    ${new_date}    ${current_date}
+    Click Element    xpath=.//*[@id='ui-datepicker-div']//a[contains(.,"${new_date}")]
+    Sleep    1s
+    Textfield Should Contain    ${xpath_ec_date}    ${new_date}
+    Click Element    ${xpath_ec_date}
+    Click Element    xpath=.//*[@id='ui-datepicker-div']//a[contains(.,"${current_date}")]
+    Sleep    1s
+    Textfield Should Contain    ${xpath_ec_date}    ${current_date}
+
+Verify List Of All Active Expenses
+    ${ec_total}=    Get Text    ${xpath_ec_total}
+    Should Be True    ${ec_total}    # Passes if ${ec_total} is not zero
+    Page Should Contain Element    ${xpath_ec_checkbox}
+    Page Should Contain    ${value_ec_date}
+    Page Should Contain    ${value_ec_merchant}
+    Page Should Contain    ${value_ec_category}
+    Page Should Contain    ${value_ec_amount}
+    ${reportName}=    Catenate    Report for    ${user_owner}
+    Page should contain    ${reportName}
+
+Verify All Elements With Table Editor
+    Page Should Contain Element    xpath=.//*[contains(@class, "lhv-table-editor")]
+    Page Should Contain Element    editDetailsButton
+    Page Should Contain Element    ${xpath_ec_date}
+    Page Should Contain Element    ${xpath_ec_merchant}
+    Page Should Contain Element    ${xpath_ec_category}
+    Page Should Contain Element    ${xpath_ec_amount}
+    Page Should Contain Element    ${xpath_ec_report}
+
+Edit Expense Values
+    [Arguments]    ${xpath_ec_merchant}    ${value_ec_merchant}
+    Click Element    ${xpath_ec_merchant}
+    Input Text    ${xpath_ec_merchant}    ${value_ec_merchant}
+    Press Key    ${xpath_ec_merchant}    \\13
+
+Verify Show Message Warning In Dialog Box
+    [Arguments]    ${xpath_ec_popup}    ${error_message}
+    Page Should Contain Element    ${xpath_ec_popup}
+    Element Should Contain    ecDialog    ${error_message}
+    Click Element    ${xpath_ec_popup}/div[1]/a/span    # Close Popup
+
+Select Row Expense And Click
+    [Arguments]    ${row}
+    Click Element    xpath=.//div[@data-row='${row}']//div[@data-col='0']/input
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[@data-row='${row}']//div[@data-col='2']
+    Log    ${value}
+    Run Keyword If    ${value}    Click Element    xpath=.//div[@data-row='${row}']//div[@data-col='2']
+    Sleep    1s
+
+Verify Dropdown Visible Or Not
+    [Arguments]    ${id_dropdown}    ${visible_status}
+    [Documentation]    Verify dropdown visible or not visible
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//*[@id='${id_dropdown}'][contains(@style,'${visible_status}')]
+    Log    ${value}
+    Run Keyword If    ${value}    Dropdown Should Be Visible    ${id_dropdown}    ${visible_status}    ELSE    Dropdown Should Not Be Visible
+    ...    ${id_dropdown}    ${visible_status}
+
+Dropdown Should Be Visible
+    [Arguments]    ${id_dropdown}    ${visible_status}
+    Page Should Contain Element    xpath=.//*[@id='${id_dropdown}'][contains(@style,'${visible_status}')]
+
+Dropdown Should Not Be Visible
+    [Arguments]    ${id_dropdown}    ${visible_status}
+    Click Element    xpath=.//*[@id='grid']/div[2]/div/div[2]/div[2]/div[4]/div/div
+    Sleep    1s
+    Click Element    xpath=.//*[@id='grid']/div[2]/div/div[2]/div[2]/div[4]/div/div
+    Page Should Contain Element    xpath=.//*[@id='${id_dropdown}'][contains(@style,'${visible_status}')]
+
+Upload File
+    [Arguments]    ${filename}
+    Click Element    media_upload_file    C:\\My Documents\TestData\${filename}
+    Call Selenium Api    type    media_upload_file    C:\\My Documents\TestData\${filename}
+    Choose File    media_upload_file    C:\\My Documents\TestData\${filename}
+    Input Text    media_upload_file    C:\\My Documents\TestData\${filename}    #pybot gives Security error
+    Submit Form    media_upload_file    C:\\My Documents\TestData\${filename}
+
+Select Dropdown Report
+    [Arguments]    ${column}    ${report_name}
+    Click Element    xpath=.//div[contains(@class, "c${column}")]//div[@class="select_editor_button"]
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[contains(@class, 'reportDropdown')]/input[contains(@style,'display: block;')]
+    Log    ${value}
+    Run Keyword If    ${value}    Input Report Name And Press Enter Key    ${column}    ${report_name}    ELSE    Click Report Name
+    ...    ${column}    ${report_name}
+
+Input Report Name And Press Enter Key
+    [Arguments]    ${column}    ${report_name}
+    Input Text    xpath=.//div[contains(@class, 'reportDropdown')]/input    ${report_name}
+    Press Key    xpath=.//div[contains(@class, 'reportDropdown')]/input    \\13
+
+Click Report Name
+    [Arguments]    ${column}    ${report_name}
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[contains(@class, 'reportDropdown')]//li[contains(@data-name, '${report_name}')]
+    Run Keyword If    ${value}    Click Element    xpath=.//div[contains(@class, 'reportDropdown')]//li[contains(@data-name, '${report_name}')]    ELSE    Log    Report name not exists.
+    ...    warn

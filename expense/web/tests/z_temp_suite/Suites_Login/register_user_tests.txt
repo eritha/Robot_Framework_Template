@@ -1,0 +1,258 @@
+*** Settings ***
+Documentation     Testing the User Registrations function of ExpenseCloud
+...               These tests should only be run against dev05. They reset the DB
+...               before each test in order to have a 'clean slate' to work from.
+Suite Setup       Open Browser And Go To Register Page    #Library    ../lib/SSHConnect.py    dev05
+Suite Teardown    Close All Browsers
+Test Teardown     Cleanup    #Test Setup    Reset DB
+Resource          ../../conf/selenium_connect.txt
+
+*** Variables ***
+${un_short_domain}    expensecloud1@gmail.c
+${un_no_domain}    expensecloud1
+${un_domain_only}    @gmail.com
+${long_email}     thisIsAVeryLongEmail_thisIsAVeryLongEmail_thisIsAVeryLongEmail_thisIsAVeryLongEmail@mailinator.com
+${45_char_email}    LongEmail_thisIsAVeryLongEmail@mailinator.com
+${un_sql_injection}    `expensecloud1@gmail.com`
+${un_mailinator}    test@mailinator.com
+${un_js_injection}    <button onclick=alert(‘Hi’);>normalEC@mailinator.com</button>
+${pw_no_num}      password
+${pw_digit}       12345678
+${pw_sql_injection}    5sSDioii"'s2/23%2@sd
+${pw_js_injection}    <button onclick=alert(‘Hi’);>normalEC@mailinator.com</button>
+${pw_js_injection_no}    <button onclick=alert(‘Hi’);>normalEC@mailinator.com</button>1
+
+*** Test Cases ***
+Register User Layout Check
+    [Documentation]    Test to ensure correct fields are present on the page
+    [Tags]    LayoutCheck
+    Page Should Contain Link    /users/login
+    Element Text Should Be    ${email_un_label}    Your Email (*)
+    Page Should Contain Textfield    ${email_un_txtfld}
+    Element Text Should Be    ${pw_label}    Password (*)
+    Page Should Contain Element    ${pw_txtfld}
+    Element Text Should Be    ${pw_cfm_label}    Confirm Password (*)
+    Page Should Contain Element    ${su_pw_cfm_txtfld}
+    Element Text Should Be    ${chk_box_label}    Sign up to receive product updates and news
+    Page Should Contain Checkbox    UserSubscribeNewsletter
+    Checkbox Should Be Selected    UserSubscribeNewsletter
+    Page Should Contain Button    btnRegister
+    Element Should Be Visible    btnRegister
+    Page Should Contain Link    lnkPrivacy
+    Page Should Contain Link    /pages/termsofuse
+
+Single Blank Field 1
+    [Documentation]    Email field blank, passwords match
+    [Tags]    InvalidRegister    BlankField
+    Register User    ${url}    ${EMPTY}    ${pw}    ${pw}
+    Element Text Should Be    //*[@id='userBoxBody']/div/p    Email must be present.
+
+Single Blank Field 2
+    [Documentation]    Password Confirmation blank
+    [Tags]    InvalidRegister    BlankField
+    Register User    ${url}    ${un_mailinator}    ${pw}    ${EMPTY}
+    Element Text Should Be    //*[@id='userBoxBody']/div/p    Password must be present.
+
+Single Blank Field 3
+    [Documentation]    Initial password blank
+    [Tags]    InvalidRegister    BlankField
+    Register User    ${url}    ${un_mailinator}    ${EMPTY}    ${pw}
+    Element Text Should Be    //*[@id='userBoxBody']/div/p    Passwords do not match.
+
+Multiple Blank Fields 1
+    [Documentation]    Email and Initial password blank
+    [Tags]    InvalidRegister    BlankField
+    Register User    ${url}    ${EMPTY}    ${EMPTY}    ${pw}
+    Element Text Should Be    //*[@id='userBoxBody']/div/p    Email must be present.\nPasswords do not match.
+
+Multiple Blank Fields 2
+    [Documentation]    Password fields blank
+    [Tags]    InvalidRegister    BlankField
+    Register User    ${url}    ${un_mailinator}    ${EMPTY}    ${EMPTY}
+    Element Text Should Be    //*[@id='userBoxBody']/div/p    Password must be present.
+
+Multiple Blank Fields 3
+    [Documentation]    Email and Passwored Confirmation blank
+    [Tags]    InvalidRegister    BlankField
+    Register User    ${url}    ${EMPTY}    ${pw}    ${EMPTY}
+    Element Text Should Be    //*[@id='userBoxBody']/div/p    Email must be present.\nPassword must be present.
+
+Invalid Email Syntax 1
+    [Documentation]    Email syntax Invalid, no domain
+    [Tags]    InvalidRegister    InvalidEmail
+    Register User    ${url}    ${un_no_domain}    ${pw}    ${pw}
+    Element Text Should Be    //*[@id='userBoxBody']/div/p    Enter a valid email.
+
+Invalid Email Syntax 2
+    [Documentation]    Email syntax Invalid, only domain
+    [Tags]    InvalidRegister    InvalidEmail
+    Register User    ${url}    ${un_domain_only}    ${pw}    ${pw}
+    Element Text Should Be    //*[@id='userBoxBody']/div/p    Enter a valid email.
+
+Invalid Email Syntax 3
+    [Documentation]    Email syntax Invalid, domain too short
+    [Tags]    InvalidRegister    InvalidEmail
+    Register User    ${url}    ${un_short_domain}    ${pw}    ${pw}
+    Element Text Should Be    //*[@id='userBoxBody']/div/p    Enter a valid email.
+
+Mismatched Passwords
+    [Documentation]    Passwords do not match.
+    [Tags]    InvalidRegister    PasswordMismatch
+    Register User    ${url}    ${un_mailinator}    ${pw}    ${pw_no_num}
+    Element Text Should Be    //*[@id='userBoxBody']/div/p    Passwords do not match.
+
+Invalid Password
+    [Tags]    InvalidRegister    NoNumberInPassword
+    Register User    ${url}    ${un_mailinator}    ${pw_no_num}    ${pw_no_num}
+    Element Text Should Be    //*[@id='userBoxBody']/div/p    Password should include at least 1 number.
+
+No Sticky Fields
+    [Documentation]    User enters registration information, clicks login, navigates back to register fields should be blank
+    [Tags]    NoStickyFields
+    Input Text    ${email_un_txtfld}    ${un}
+    Input Text    ${pw_txtfld}    ${pw}
+    Input Text    ${su_pw_cfm_txtfld}    ${pw}
+    Click Link    /users/login
+    Title Should Be    TriNet Expense Users Login
+    Click Link    /users/register
+    #Texfields are EMPTY, password fields return NONE, when they don't dontain any characters.
+    Textfield Value Should Be    ${email_un_txtfld}    ${EMPTY}
+    Textfield Value Should Be    ${pw_txtfld}    ${NONE}
+    Textfield Value Should Be    ${su_pw_cfm_txtfld}    ${NONE}
+
+Email Already In Use
+    [Documentation]    Registration should fail when email is already in use.
+    [Tags]    EmailInUse    InvalidRegister
+    Close All Browsers
+    Open Browser and Go To Register Page
+    Register User    ${url}    ${un}    ${pw}    ${pw}
+    Close All Browsers
+    Open Browser and Go To Register Page
+    Register User    ${url}    ${un}    ${pw}    ${pw}
+    Element Text Should Be    //*[@id='userBoxBody']/div/p    This email used by another user.
+
+SQL Injection 1
+    [Documentation]    Registration fails with attempted SQL injections in username
+    [Tags]    InvalidRegister    SQLInjection
+    Register User    ${url}    ${un_sql_injection}    ${pw}    ${pw}
+    Element Text Should Be    //*[@id='userBoxBody']/div/p    Enter a valid email.
+
+SQL Injection 2
+    [Documentation]    Registration successful with sql injection in pw
+    [Tags]    InvalidRegister    SQLInjection
+    Register User    ${url}    ${un}    ${pw_sql_injection}    ${pw_sql_injection}
+
+Long Email 1
+    [Documentation]    Successfully register with a very long email (45 chars)
+    [Tags]    ValidRegister    LongEmail
+    Register User Full Check    ${url}    ${45_char_email}    ${pw_digit}    ${pw_digit}
+    ${DBR}    Reset DB
+    Log    ${DBR}
+
+Long Email 2
+    [Documentation]    Unsuccessfully register with a very long email (>45 chars)
+    [Tags]    InvalidRegister    LongEmail
+    Register User    ${url}    ${long_email}    ${pw_digit}    ${pw_digit}
+    Element Text Should Be    //*[@id='userBoxBody']/div/p    Enter a valid email.
+
+JS Injection 1
+    [Documentation]    Registration fails with attempted JavaScript injections in username
+    [Tags]    InvalidRegister    JSInjection
+    Register User    ${url}    ${un_js_injection}    ${pw}    ${pw}
+    Element Text Should Be    //*[@id='userBoxBody']/div/p    Enter a valid email.
+
+JS Injection 2
+    [Documentation]    Registration fails with attempted JavaScript injections in password
+    [Tags]    InvalidRegister    JSInjection
+    Register User    ${url}    ${un}    ${pw_js_injection}    ${pw_js_injection}
+    Element Text Should Be    //*[@id='userBoxBody']/div/p    Password should include at least 1 number.
+
+JS Injection 3
+    [Documentation]    Registration succeeds with attempted JavaScript injections in password
+    [Tags]    ValidRegister    JSInjection
+    Register User Full Check    ${url}    ${un}    ${pw_js_injection_no}    ${pw_js_injection_no}
+
+Unsubscribe On Sign Up
+    [Documentation]    Registration successful
+    [Tags]    ValidRegister    Unsubscribe
+    ${un}    Generate Random Username
+    Register User No Submit    ${url}    ${un}    ${pw}    ${pw}
+    Checkbox Should Be Selected    UserSubscribeNewsletter
+    Unselect Checkbox    UserSubscribeNewsletter
+    Checkbox Should Not Be Selected    UserSubscribeNewsletter
+    Click Button    btnRegister
+    Click Button    btnCancel
+    Click Link    /users/dashboard#
+    Title Should Be    TriNet Expense Users
+    Element Should Contain    subNav    ${un.lower()}
+    Log    ${un.lower()}
+    Close All Browsers
+    Log In    ${url}    ${un.lower()}    ${pw}
+    Title Should Be    TriNet Expense Users
+    Element Should Contain    subNav    ${un.lower()}
+
+Login With Inactive Account
+    [Documentation]    Attempt to LogIn with an inactive account.
+    [Tags]    InactiveAccount
+    Register User Full Check    ${url}    ${un}    ${pw}    ${pw}
+    Close All Browsers
+    Inactivate Account    ${un}
+    Log In    ${url}    ${un}    ${pw}
+    Element Text Should Be    //*[@id='userBoxBody']/div/p    Email or password are invalid
+
+Login with Locked Account
+    [Documentation]    Attempt to LogIn with an locked account.
+    [Tags]    LockedAccount
+    Register User Full Check    ${url}    ${un}    ${pw}    ${pw}
+    Close Browser
+    Lock Account    ${un}
+    Log In    ${url}    ${un}    ${pw}
+    Element Text Should Be    //*[@id='userBoxBody']/div/p    Email or password are invalid
+
+*** Keywords ***
+Generate Random Username
+    ${un_1}    Generate Random String
+    ${un_2}    Generate Random String
+    [Return]    Catenate    ${un_1}    @    ${un_2}    .com
+
+Cleanup
+    [Documentation]    If at user registration screen set the fields to be empty, otherwise close the browser and return to the user registration page.
+    ${register_url}    Catenate    SEPARATOR=    ${url}    /users/register
+    ${value}    Run Keyword And Return Status    Location Should Be    ${register_url}
+    Log    ${value}
+    Run Keyword If    ${value}    Set Fields To Empty    ELSE    Close All Browsers and Return to Register Page
+
+Close All Browsers and Return to Register Page
+    Close All Browsers
+    Open Browser and Go To Register Page
+
+Set Fields To Empty
+    Input Text    ${email_un_txtfld}    ${EMPTY}
+    Input Text    ${pw_txtfld}    ${EMPTY}
+    Input Text    ${su_pw_cfm_txtfld}    ${EMPTY}
+
+Register User Full Check
+    [Arguments]    ${url}    ${un}    ${pw}    ${pw_confirm}
+    [Documentation]    Register user, proceed to dashboard, logout, log back in
+    Input Text    ${email_un_txtfld}    ${un}
+    Input Text    ${pw_txtfld}    ${pw}
+    Input Text    ${su_pw_cfm_txtfld}    ${pw_confirm}
+    Click Button    btnRegister
+    Press Key    //*    \\27
+    Press Key    //*    \\27
+    Title Should Be    TriNet Expense Users Register
+    Element Should Contain    subNav    ${un.lower()}
+    Log Out
+    Log    ${un.lower()}
+    Close Browser
+    Log In    ${url}    ${un.lower()}    ${pw}
+    Title Should Be    TriNet Expense Users
+    Element Should Contain    subNav    ${un.lower()}
+    Log Out
+
+Register User No Submit
+    [Arguments]    ${url}    ${un}    ${pw}    ${pw_confirm}
+    [Documentation]    Open browser, go to user registration, provide user information
+    Input Text    ${email_un_txtfld}    ${un}
+    Input Text    ${pw_txtfld}    ${pw}
+    Input Text    ${su_pw_cfm_txtfld}    ${pw_confirm}

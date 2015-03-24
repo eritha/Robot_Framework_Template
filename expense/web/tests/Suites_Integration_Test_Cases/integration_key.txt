@@ -1,0 +1,225 @@
+*** Settings ***
+Documentation     /* COMMON KEY for Suite Integration Test Cases */
+Resource          ../../conf/selenium_connect.txt
+
+*** Keywords ***
+Select Main Menu
+    [Arguments]    ${parent}    ${child}
+    [Documentation]    COMMON_KEY: Keyword select main menu expense (horizontal menu), hover parent menu then click child menu
+    Mouse Over    xpath=.//*[@id='homeMenu']//a[contains(.,'${parent.title()}')]
+    #Mouse Over    xpath=.//*[@id='homeMenu']//a[text()='${parent.title()}']
+    Sleep    2s
+    #Click Element    xpath=.//*[@id='homeMenu']//a[text()='${child.title()}']
+    Click Link    /${parent}/${child}
+
+Click Setting Menu
+    [Arguments]    ${main}    ${mid}    ${last}
+    [Documentation]    COMMON_KEY: Keyword access setting menu, then click vertical menu link
+    ...    Ex: Click Settings Menu | ${EMPTY} | companies | policies | >>> Access expense policies in Setting page
+    Click Ec Link    settings    user    ${EMPTY}
+    Click Ec Link    ${main}    ${mid}    ${last}
+
+Click Ec Link
+    [Arguments]    ${main}    ${mid}    ${last}
+    [Documentation]    COMMON_KEY: Keyword click any ec link with two or three parameter
+    Run Keyword If    '${last}'=='${EMPTY}'    Click Link    /${main}/${mid}    ELSE IF    '${main}'=='${EMPTY}'    Click Link
+    ...    /${mid}/${last}    ELSE IF    '${mid}'=='${EMPTY}'    Log    Parameter Link is wrong or incorrect format    warn.
+    ...    ELSE    Click Link    /${main}/${mid}/${last}
+
+Delete And Access Integration Submit Form
+    [Arguments]    ${inte_name}
+    [Documentation]    COMMON_KEY: Delete Integration, then access Integration Submit Form to setup the new one (Netsute & Intacct)
+    #--- STEP 1 ---: User logs in as paid individual to ExpenseCloud page and goes to Add-Ons page
+    Click Setting Menu    settings    report    ${EMPTY}
+    #>>> PRECONDITION: DELETE ALL INTEGRATIONS:
+    Delete Connection Or Integration By Name If Exist    ${inte_name}
+    Access Integration Submit Form    ${inte_name}
+
+Access Integration Submit Form
+    [Arguments]    ${inte_name}
+    [Documentation]    COMMON_KEY: Access Integration Submit Form (Netsute & Intacct)
+    Click Ec Link    settings    addons    ${EMPTY}
+    #>>> OUTPUT<<<: Add-Ons page displayed.
+    Element Text Should Be    xpath=.//*[@id='pageAddons']/h2    Add-Ons & Integrations
+    #--- STEP 2 ---: User clicks on Install button in Intacct integration panel.
+    Click Ec Link    settings    report    ${inte_name}
+    #>>> OUTPUT<<<: System displays Report Submission Setup dialog box.
+    Wait Until Page Contains Element    reportSubmissionReport
+    Page Should Contain    Report Submission Setup
+    # User mark the check box "Make Integration Visible to Company".
+    #>>> OUTPUT<<<: The check box "Allow All Users To View Integration Data" displayed.
+    #Select Checkbox For Integration Submit Form    ${inte_name.lower()}Visibility
+    ########Page Should Contain Element    xpath=.//li[@style='display: list-item;']//input[@id='intacctGrantView']
+    #Page Should Contain Element    xpath=.//*[@id='${inte_name}Integration']//li[@style='display: list-item;']    # >>> phantomjs can't verify this step
+    #Page Should Contain    Allow All Users To View Integration Data
+    #Element Should Contain    xpath=.//*[@id='${inte_name}Integration']//li[@style="display: list-item;"]    Allow All Users To View Integration Data    # >>> phantomjs can't verify this step
+
+Select Checkbox For Integration Submit Form
+    [Arguments]    ${ckb_name}
+    [Documentation]    SUB keyword for "Access Integration Submit Form":
+    ...    Seclect Checkbox for integration submit form (Netsuite & Intacct)
+    Select Checkbox    ${ckb_name}
+    Checkbox Should Be Selected    ${ckb_name}
+
+Select Checkbox Submit Form
+    [Arguments]    ${inte_name}    ${ns_no_validate_policy}    ${ns_clients_projects}    ${ns_classes}    ${ns_departments}    ${ns_locations}
+    ...    ${ns_report_paid}    ${ns_visibility_to_company}    ${ns_grant_view}    ${ns_multi_entry}    ${ns_submit_all}
+    [Documentation]    COMMON_KEY: Select checkbox for submit form for integration Netsuite & Intacct
+    ...    Argument: ${EMPTY} / Check / Uncheck, (Select / Unselect for ${ns_multi_entry} & ${ns_submit_all})
+    ...    Ex: Select Checkbox Submit Form | ${EMPTY} | Check | Check | Check | Check | Check | Check | Uncheck | Select | Unselect
+    Check Or Uncheck Checkbox    id=${inte_name.lower()}NoValidatePolicy    ${ns_no_validate_policy.lower()}    # Checkbox for 'NoValidatePolicy'
+    Check Or Uncheck Checkbox    id=${inte_name.lower()}ClientProject    ${ns_clients_projects.lower()}    # Checkbox for 'ClientProject'
+    Check Or Uncheck Checkbox    id=${inte_name.lower()}Class    ${ns_classes.lower()}    # Checkbox for 'Class'
+    Check Or Uncheck Checkbox    id=${inte_name.lower()}Department    ${ns_departments.lower()}    # Checkbox for 'Department'
+    Check Or Uncheck Checkbox    id=${inte_name.lower()}Location    ${ns_locations.lower()}    # Checkbox for 'Location'
+    Check Or Uncheck Checkbox    id=markPaid    ${ns_report_paid.lower()}    # Checkbox for 'markPaid'
+    Check Or Uncheck Checkbox    id=${inte_name.lower()}Visibility    ${ns_visibility_to_company.lower()}    # Checkbox for 'Netsuite Visibility'
+    Run Keyword If    '${ns_visibility_to_company.lower()}' == 'check'    Check Or Uncheck Checkbox    id=${inte_name.lower()}GrantView    ${ns_grant_view.lower()}    # Checkbox for 'GrantView'
+    Run Keyword If    '${ns_multi_entry.lower()}' == 'select'    Select Radio Button    send_approved_report_to    netsuiteSendAsMultiEntry    ELSE IF    '${ns_submit_all.lower()}' == 'select'
+    ...    Select Radio Button    send_approved_report_to    netsuiteSendAsSingle    ELSE IF    '${ns_multi_entry}' == '${EMPTY}'    Log
+    ...    Not set default "Multi-Entry Based On Reimbursable Status" for sending reports to NetSuite.    ELSE IF    '${ns_submit_all}' == '${EMPTY}'    Log    Not set default "Submit All Expenses To Employee Center" for sending reports to NetSuite.    ELSE
+    ...    Log    Wrong values '${EMPTY}'/'select'/'unselect'.    warn    # Checkbox for 'Set default for sending reports'
+
+Check Or Uncheck Checkbox
+    [Arguments]    ${locator}    ${status_check}
+    [Documentation]    COMMON_KEY: Click to check or uncheck checkbox in submit form for integration Netsuite & Intacct
+    ...    SUB Keyword for "Select Checkbox Submit Form".
+    Page Should Contain Element    ${locator}
+    Run Keyword If    '${status_check}' == '${EMPTY}'    Log    Checkbox not selected.    ELSE IF    '${status_check}' == 'check'    Select Checkbox
+    ...    ${locator}    ELSE IF    '${status_check}' == 'uncheck'    Unselect Checkbox    ${locator}    ELSE
+    ...    Log    Wrong values '${EMPTY}'/'check'/'uncheck'.    warn
+
+Verify System Show The Dialog Box Install Integration Successful
+    [Arguments]    ${inter_name}
+    [Documentation]    COMMON_KEY: Verify System Shows Dialog (Netsuite & Intacct)
+    Wait Until Page Contains Element    xpath=.//*[@id='${inter_name}Integration']/div/a[contains(.,"Map Expense Categories")]    ${TIMEMAX}
+    Run Keyword If    '${inter_name}'=='Netsuite'    Element Text Should Be    xpath=.//*[@id='${inter_name}Integration']/div/p[1]    The integration with NetSuite was successfully set up.    ELSE    Element Text Should Be
+    ...    xpath=.//*[@id='${inter_name}Integration']/div/p[1]    The integration with ${inter_name} was successfully set up.
+
+Access Integration Mapping
+    [Arguments]    ${inte_name}
+    [Documentation]    COMMON_KEY: Access Integration Mapping (Netsuite & Intacct)
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//*[@id='${inte_name}Integration']//a    ${TIMEOUT}
+    Run Keyword If    ${value}    Click Element    xpath=.//*[@id='${inte_name}Integration']//a    ELSE    Log    Integration Mapping Link Not Appear
+    ...    warn
+
+Verify Integration Mapping Displayed
+    [Documentation]    COMMON_KEY: Verify Integration page displayed
+    #>>> OUTPUT<<<: System forwards to Intacct Mapping page
+    #Title Should Be    TriNet Expense Mappings
+    Title Should Be    title=TriNet Expense - Mappings
+    Page Should Contain    Integration Mapping
+
+Opens An Unsubmitted Report And Exports To Integration
+    [Arguments]    ${inte_name}
+    [Documentation]    COMMON_KEY: Export report to Integration name with the first report row (Netsuite, Intacct & Quickbookonline)
+    Opens An Report With Report Type    Unsubmitted Reports    # Filter unsubmited report
+    Select Dropdown With Input Text    exportType_chzn    ${inte_name}    # Select integration to submit report
+    Click Button    id=submitExport
+
+Opens An Report With Report Type
+    [Arguments]    ${report_type}
+    [Documentation]    COMMON_KEY: Open a report to view detail with report type (Netsuite, Intacct & Quickbookonline)
+    Select Main Menu    reports    user
+    Wait Until Report Page Load
+    Select Dropdown    filterStatus_chzn    ${report_type}    # Filter unsubmited report
+    Wait Until Page Contains Element    xpath=.//div[@id='grid']//div[@data-row='0']/div[@data-col='2']    ${TIMEWAIT}
+    Click Element    xpath=.//div[@id='grid']//div[contains(@class,'r0')]/div[contains(@class,'c2')]/a    # Select the first report unsubmited row
+    Wait Until Report Detail Page Load
+
+Opens An Report And Exports To Integration
+    [Arguments]    ${report_name}    ${inte_name}
+    [Documentation]    COMMON_KEY: Export report by Report Name to Integration Name.
+    ...    Ex: Opens An Report And Exports To Integration Report_B My Approver
+    Select Report By Report Name    ${report_name}    # Select report by report name to view report detail
+    Select Dropdown With Input Text    exportType_chzn    ${inte_name}    # Select integration to submit report
+    Click Button    submitExport
+
+Select Report By Report Name
+    [Arguments]    ${report_name}
+    [Documentation]    COMMON_KEY: Select a report by report name
+    Select Main Menu    reports    user
+    Wait Until Page Contains Element    xpath=.//div[@class='grid']//div[@data-row='0']/div[@data-col='2']    ${TIMEOUT}
+    Wait Until Page Contains Element    xpath=.//div[@id='grid']//div[@data-row='0']/div[contains(@class,'cell_report_name')]    ${TIMEOUT}
+    Click Element    xpath=.//div[@id='grid']//div[contains(@class,'cell_report_name')]/a[contains(.,'${report_name}')]
+    Wait Until Page Contains Element    xpath=.//div[@id='gridReportExpenses']//div[@data-row='0']/div[@data-col='1']    ${TIMEMAX}
+    #Wait Until Page Contains Element    submitExport    ${TIMEWAIT}
+
+Verify Message Export To Integration
+    [Arguments]    ${message}
+    [Documentation]    COMMON_KEY: Verify message export to any integration successfull OR Faile due to permission, etc ...
+    Wait Until Report Detail Page Load
+    ${value_text}    Run Keyword And Return Status    Wait Until Page Contains    ${message}    30s
+    ${value_css}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[@id='background_msg_board_list']//span[@class='bg_prog_status Completed']    ${TIMEOUT}
+    Run Keyword If    ${value_css} and ${value_text}    Log    Export report result: "${message}".    ELSE    Click Refresh Button And Wait Until Page Show Message    ${message}
+
+Click Refresh Button And Wait Until Page Show Message
+    [Arguments]    ${message}
+    [Documentation]    COMMON_KEY: Click refresh button to wait until page show message export success
+    Click Link    background_msg_board_refresh
+    Sleep    ${TIMESLEEP}    # Lazy load
+    ${value_text}    Run Keyword And Return Status    Wait Until Page Contains    ${message}    ${TIMEWAIT}
+    ${value_css}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[@id='background_msg_board_list']//span[@class='bg_prog_status Completed']    ${TIMEOUT}
+    Run Keyword If    ${value_css} and ${value_text}    Log    Integration export report successful.    ELSE    Click Refresh Button And Wait Until Page Show Message    ${message}
+
+Verify Page Show Message
+    [Arguments]    ${msg_status}    ${message}
+    [Documentation]    COMMON_KEY: Verify message export to my approver, next approver, bookeeper
+    ...    Ex: Verify Page Show Message | success | Exported Successfully.
+    #Wait Until Report Detail Page Load
+    Wait Until Page Contains Element    xpath=.//div[@class='msg br-5 ${msg_status}']/p[text()='${message}']    ${TIMEOUT}
+    Log    Export report successfull.
+
+Input Intacct Account And Submit
+    [Arguments]    ${intacct_user_id}    ${intacct_password}    ${intacct_employee_id}    ${intacct_company_id}
+    [Documentation]    COMMON_KEY: Input Intacct values into Intacct form, then click submit
+    Input Intacct Account    ${intacct_user_id}    ${intacct_password}    ${intacct_employee_id}    ${intacct_company_id}
+    Click Element    xpath=.//*[@id='IntacctIntegration']//button[contains(.,"Save")]
+
+Input Intacct Account
+    [Arguments]    ${intacct_user_id}    ${intacct_password}    ${intacct_employee_id}    ${intacct_company_id}
+    [Documentation]    COMMON_KEY: Input Intacct values into Intacct form
+    Input Text    intacctUsername    ${intacct_user_id}
+    Input Text    intacctPassword    ${intacct_password}
+    Input Text    intacctEmployeeId    ${intacct_employee_id}
+    Input Text    intacctCompanyId    ${intacct_company_id}
+
+Input Netsuite Account And Submit
+    [Arguments]    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    [Documentation]    COMMON_KEY: Input netsuite values into Netsuite form, then click submit form
+    Input Netsuite Account    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Wait Until Page Contains Element    xpath=.//*[@id='NetsuiteIntegration']//button[text()='Save']    ${TIMEWAIT}
+    Click Element    xpath=.//*[@id='NetsuiteIntegration']//button[text()='Save']
+
+Input Netsuite Account
+    [Arguments]    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    [Documentation]    COMMON_KEY: Input netsuite values into Netsuite form
+    Input Text    netsuiteEmail    ${netsuite_user_id}
+    Input Text    netsuitePassword    ${netsuite_password}
+    Input Text    netsuiteAccountId    ${netsuite_account_id}
+
+Input Quickbook Online Account And Submit
+    [Arguments]    ${quickbookonline_user_id}    ${quickbookonline_password}
+    [Documentation]    COMMON_KEY: Input QBO values into QBO login form, then click login button
+    Input Quickbook Online Account    ${quickbookonline_user_id}    ${quickbookonline_password}
+    Click Button    id=ius-sign-in-submit-btn
+    Title Should Be    Welcome to Intuit App Center
+
+Input Quickbook Online Account
+    [Arguments]    ${quickbookonline_user_id}    ${quickbookonline_password}
+    [Documentation]    COMMON_KEY: Input QBO values into QBO login form
+    Wait Until Page Contains Element    name=Email    ${TIMEOUT}
+    Input text    name=Email    ${quickbookonline_user_id}
+    Input text    name=Password    ${quickbookonline_password}
+
+Select QBO Company
+    [Arguments]    ${company_name}
+    [Documentation]    COMMON_KEY: Select Quickbook Online company after login QBO page.
+    ...    Ex: Select QBO Company | Sikola's / Select QBO Company | ExpenseCloud1
+    Click Element    xpath=.//*[contains(text(),"${company_name}")]
+
+Input Integration To CC
+    [Arguments]    ${inte_name}    ${to_email}    ${cc_email}
+    [Documentation]    COMMON_KEY: Input To & CC email for submitssion setup
+    Run Keyword If    '${to_email}' <> '${EMPTY}'    Input Text    id=${inte_name.lower()}To    ${to_email}
+    Run Keyword If    '${cc_email}' <> '${EMPTY}'    Input Text    id=${inte_name.lower()}Cc    ${cc_email}

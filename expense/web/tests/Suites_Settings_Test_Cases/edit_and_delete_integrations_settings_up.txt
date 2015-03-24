@@ -1,0 +1,72 @@
+*** Settings ***
+Documentation     /* Suite Edit And Delete Integration Settings */
+Suite Setup       Set Server
+Test Teardown     Close All Browsers
+Resource          ../../conf/selenium_connect.txt
+Library           Selenium2Library
+
+*** Test Cases ***
+TC_Delete The Default Integration (A5)
+    [Tags]    Smoke Testing    DeleteIntegration    DeleteDefault    Suites Settings    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Click Setting Menu    settings    report    ${EMPTY}
+    Setup A Connection In Setting Page    Approver    ${user_owner}
+    Setup A Connection In Setting Page    Approver2    ${user_nextapprover_B}
+    Setup A Connection In Setting Page    Bookkeeper    ${user_bookkeeper_C}
+    Hover Connection Or Integration Link    Approver2    Set default
+    Mark Default The Connection Or Integration    Approver2
+    Verify Link Mark Default The Connection Or Integration    Approver2
+    #>>> DELETE DEFAULT INTEGRATION:
+    Delete Default Connection Or Integration
+    Verify A Connection Or Integration Not Exist    Approver2
+    Verify Set Default Other Connection Or Integration
+    Access Reports Page And View An Existed Report
+    Dropdown Should Not Contain Connection Or Integration    exportType_chzn    Approver2
+    Click Setting Menu    settings    report    ${EMPTY}
+    Mark Default The Connection Or Integration    Bookkeeper
+    Verify Link Mark Default The Connection Or Integration    Bookkeeper
+
+TC_Delete All Integrations (A6)
+    [Tags]    DeleteIntegration    DeleteAll    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Click Setting Menu    settings    report    ${EMPTY}
+    Setup A Connection In Setting Page    Approver    ${user_owner}
+    Setup A Connection In Setting Page    Approver2    ${user_nextapprover_B}
+    Setup A Connection In Setting Page    Bookkeeper    ${user_bookkeeper_C}
+    #>>> DELETE ALL INTEGRATIONS:
+    Delete All Current Connections Or Integrations
+    Verify All Connections Or Integrations Deleted
+    Access Reports Page And View An Existed Report
+    Verify Dropdown Not Contain Any Integrations    exportType_chzn
+    Click Setting Menu    settings    report    ${EMPTY}
+    Setup A Connection In Setting Page    Approver    ${user_owner}
+    Verify A Connection Or Integration Existed    Approver    ${user_owner}
+
+TC_Delete Not Default Integrations (A7)
+    [Tags]    DeleteIntegration    DeleteByName    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Click Setting Menu    settings    report    ${EMPTY}
+    Setup A Connection In Setting Page    Approver    ${user_owner}
+    Setup A Connection In Setting Page    Approver2    ${user_nextapprover_B}
+    Setup A Connection In Setting Page    Bookkeeper    ${user_bookkeeper_C}
+    Hover Connection Or Integration Link    Bookkeeper    Set default
+    Mark Default The Connection Or Integration    Bookkeeper
+    Hover Connection Or Integration Link    Bookkeeper    Set default
+    Verify Link Mark Default The Connection Or Integration    Bookkeeper
+    Hover Connection Or Integration Link    Approver    Delete
+    #>>> DELETE NOT DEFAULT INTEGRATION:
+    Delete Connection Or Integration By Name If Exist    Approver
+    Verify Link Mark Default The Connection Or Integration    Bookkeeper
+    Access Reports Page And View An Existed Report
+    Dropdown Contain Default Connection Or Integration    exportType_chzn    Bookkeeper
+    Dropdown Should Not Contain Connection Or Integration    exportType_chzn    Approver
+
+*** Keywords ***
+Access Reports Page And View An Existed Report
+    [Documentation]    SUITE_KEY: Access report page and view report detail
+    Click Ec Link    reports    user    ${EMPTY}
+    Wait Until Page Contains Element    ${xpath_ec_total}
+    ${ec_total}=    Get Text    ${xpath_ec_total}
+    Run Keyword If    ${ec_total}>0    Click Element    xpath=.//div[@id='grid']//div[contains(@class,'r0')]/div[contains(@class,'c2')]/a    ELSE    Log    No Report Exist ...
+    ...    warn
+    Wait Until Page Contains Element    xpath=.//div[@id='gridReportExpenses']//div[@data-row='0']//div[@data-col='2']    ${TIMEOUT}

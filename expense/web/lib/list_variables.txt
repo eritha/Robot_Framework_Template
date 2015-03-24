@@ -1,0 +1,74 @@
+*** Settings ***
+Documentation     /* Varialbles for project */
+Library           Selenium2Library
+Library           Collections
+Library           String
+Library           SSHLibrary
+
+*** Variables ***
+${idgrid_expenses}    grid    # In some cases: id="gridReportExpenses"
+${idbtn_add_expense}    id=btnAddExpense    # In some cases: id="btnAddNewExpense"
+#XPATH:
+${xpath_ec_date}    xpath=.//div[contains(@class,'lhv-table-editor')]//div[contains(@class,'c1 cell_date')]//input
+#${xpath_ec_date}    xpath=.//*[@id='grid']/div[2]/div/div[2]/div[2]/div[2]/div/input
+${xpath_ec_merchant}    xpath=.//div[contains(@class,'lhv-table-editor')]//div[contains(@class,'c2')]//input
+${xpath_ec_category}    xpath=.//div[contains(@class,'lhv-table-editor')]//div[contains(@class,'category-cell')]//input
+${xpath_ec_amount}    xpath=.//div[contains(@class,'lhv-table-editor')]//div[contains(@class,'cell_amount')]//input
+${xpath_ec_report}    xpath=.//div[contains(@class,'lhv-table-editor')]//div[contains(@class,'c5')]//input
+${xpath_ec_total}    xpath=.//strong[@class='lhv-table-paging-total']
+${id_ec_project}    id=project
+${id_ec_client}    id=client
+# INTACCT INTEGRATION:
+${intacct_site}    https://www.intacct.com/ia/acct/login.phtml
+${intacct}        Intacct
+${intacct_user_id}    testaccount
+${intacct_password}    Welcome1234!
+${intacct_employee_id}    E026
+${intacct_company_id}    demo12408769
+${intacct_user_id_guess}    guest
+${intacct_password_guess}    a7511f85
+${intacct_employee_id_guess}    EMP-0007
+${intacct_company_id_guess}    demo78316018
+# NETSUITE INTEGRATION:
+${netsuite_site}    https://system.netsuite.com/
+${netsuite}       Netsuite
+${netsuite_full_name}    Uy
+${netsuite_user_id}    pcuy@lhv.vn
+${netsuite_password}    welcome1234
+${netsuite_account_id}    TSTDRV900549
+# Netsuite security question for all account netsuite
+${ns_securiry_qs_01}    What was your childhood nickname?
+${ns_answer_qs_01}    1111
+${ns_securiry_qs_02}    What is your oldest sibling's birthday month and year?
+${ns_answer_qs_02}    111111
+${ns_securiry_qs_03}    What is the name of the place your wedding reception was held?
+${ns_answer_qs_03}    11111111
+#${netsuite_user_id}    hvphuoc@lhv.vn
+#${netsuite_password}    myPa55word
+#${netsuite_account_id}    TSTDRV804110
+#${netsuite_full_name}    Phuoc Ha
+# QUICKBOOK INTEGRATION:
+${quickbookonline_site}    http://quickbooks.intuit.com/
+${quickbookonline}    QuickBook
+${quickbookonline_user_id}    esikola
+${quickbookonline_password}    b1enveneda
+${qbo_company_name}    ExpenseCloud1
+${qbo_company_first}    Company Owner
+${qbo_company_last}    Test
+# TRIPIT INTEGRATION:
+${tripit}         TripIt
+${tripit_user_id}    tbtrang@lhv.vn
+${tripit_password}    12345678
+
+*** Keyword ***
+Set Suite Variable For Report Page
+    [Arguments]    ${idgrid_expenses_new}    ${idbtn_add_expense_new}
+    [Documentation]    COMMON_KEY: Change ID grid & ID button add expense in expense active page or report page
+    Run Keyword If    '${idgrid_expenses_new}'=='${EMPTY}'    Log    Id grid contains expense list not change.    ELSE    Set suite Variable    ${idgrid_expenses}
+    ...    ${idgrid_expenses_new}
+    Run Keyword If    '${idbtn_add_expense_new}'=='${EMPTY}'    Log    Id button add expense not change.    ELSE    Run Keywords    Set suite Variable
+    ...    ${idbtn_add_expense}    ${idbtn_add_expense_new}    AND    Set Suite Variable    ${expense_checkbox_selector}    \#${idgrid_expenses_new} > div.lhv-table-body.viewport > div > div.lhv-tbody.viewport > div.lhv-tr.bg-editor.lhv-table-editor > div.lhv-td.c0.cell-chk > input
+    ...    AND    Set Suite Variable    ${merchant_tb_selector}    \#${idgrid_expenses_new} > div.lhv-table-body.viewport > div > div.lhv-tbody.viewport > div.lhv-tr.bg-editor.lhv-table-editor > div.lhv-td.c2 > div > input[type="text"]    AND    Set Suite Variable
+    ...    ${amount_tb_selector}    \#${idgrid_expenses_new} > div.lhv-table-body.viewport > div > div.lhv-tbody.viewport > div.lhv-tr.bg-editor.lhv-table-editor > div.lhv-td.c4.cell_amount.td-right > div > input    AND    Set Suite Variable    ${save_btn_selector}    \#${idgrid_expenses_new} > div.lhv-editors-container > div.bg-editor.br-tr-5.br-br-5.addition-control.hide-this > a
+    ...    AND    Set Suite Variable    ${cat_selector}    \#${idgrid_expenses_new} > div.lhv-table-body.viewport > div > div.lhv-tbody.viewport > div.lhv-tr.bg-editor.lhv-table-editor > div.lhv-td.c3.cell_select.category-cell > div > div    AND    Set Suite Variable
+    ...    ${parent_selector}    \#categoryDropdown > li:nth-child(parent_id) > a    AND    Set Suite Variable    ${child_selector_add}    > ul > li:nth-child(child_id) > a

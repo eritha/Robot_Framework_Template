@@ -1,0 +1,43 @@
+*** Settings ***
+Documentation     /* Suite Assign License */
+Suite Setup       Set Server
+Test Teardown     Close All Browsers
+Resource          ../../conf/selenium_connect.txt
+Library           Selenium2Library
+
+*** Variables ***
+${invalid_intacct_user_id}    "userABC102014
+${invalid_intacct_password}    invalid_pass
+${invalid_intacct_employee_id}    invalid_employee
+${invalid_intacct_company_id}    invalid_company
+
+*** Test Cases ***
+TCA0_Basic flow (B) - (0-sanityCheck)
+    [Tags]    Smoke Testing    Assign License    Completed
+    ${time}=    Evaluate    time.strftime("%d%m%Y%H%M%S", time.localtime())    time
+    Log    ${time}
+    Register New User    ${sever_test}    user${time}@mailinator.com    ${pass_general}    ${pass_general}
+    Click Link    link=Upgrade your plan
+
+TCA1_Setup Intacct with incorrect information (A1) - (2-Medium)
+    [Tags]    Assign License    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Delete And Access Integration Submit Form    ${intacct}
+
+*** Keywords ***
+Input Plan And Submit
+    [Arguments]    ${licenses_num}    ${billing_period}    ${promo_code}    ${time_license}    ${subscribe_activity}
+    [Documentation]    SUITE_KEY: Input plan for payments/pricing
+    Input Plan    ${licenses_num}    ${billing_period}    ${promo_code}    ${time_license}    ${subscribe_activity}
+    Click Submit
+
+Input Plan
+    [Arguments]    ${licenses_num}    ${billing_period}    ${promo_code}    ${time_license}    ${subscribe_activity}
+    [Documentation]    SUITE_KEY: Input values into plan page
+    Wait Until Page Contains Element    id=licenses    ${TIMEWAIT}    # Wait plan page load
+    Run Keyword If    '${licenses_num}' == '${EMPTY}'    Input Text    id=licenses    ${licenses_num}    # Input license number
+    Run Keyword If    '${billing_period}' == '${EMPTY}'    Select Dropdown    sbillPeriod_chzn    ${billing_period}    # Select period billing
+    Run Keyword If    '${promo_code}' == '${EMPTY}'    Input Text    id=promo_input    ${promo_code}    # Input promo code
+    Run Keyword If    '${time_license}' == '${EMPTY}'    Input Text    id=expenseTimeLicenses    ${time_license}    # Input time license
+    Run Keyword If    '${subscribe_activity}' == 'Checked'    Select Checkbox    id=transactionalLicense    # Check / Uncheck "Subscribe To Activity Base User Add-On"
+    #ELSE    Unselect Checkbox    id=transactionalLicense

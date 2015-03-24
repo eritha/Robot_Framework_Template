@@ -1,0 +1,462 @@
+*** Settings ***
+Documentation     /* LIST KEYWORD REUSE FOR EXPENSE */
+Library           Selenium2Library
+Library           ../py_lib/datetime_tools.py    # These are some of methods for datetime (python).
+Resource          ../../conf/selenium_connect.txt
+
+*** Variables ***
+${cat_parent_base}    //*[@id="categoryDropdown"]/li[parent_id]/a
+${cat_child_base}    /ul/li[child_id]/a
+#CSS Selectors
+${expense_checkbox_selector}    \#${idgrid_expenses} > div.lhv-table-body.viewport > div > div.lhv-tbody.viewport > div.lhv-tr.bg-editor.lhv-table-editor > div.lhv-td.c0.cell-chk > input
+${merchant_tb_selector}    \#${idgrid_expenses} > div.lhv-table-body.viewport > div > div.lhv-tbody.viewport > div.lhv-tr.bg-editor.lhv-table-editor > div.lhv-td.c2 > div > input[type="text"]
+${amount_tb_selector}    \#${idgrid_expenses} > div.lhv-table-body.viewport > div > div.lhv-tbody.viewport > div.lhv-tr.bg-editor.lhv-table-editor > div.lhv-td.c4.cell_amount.td-right > div > input
+${save_btn_selector}    \#${idgrid_expenses} > div.lhv-editors-container > div.bg-editor.br-tr-5.br-br-5.addition-control.hide-this > a
+${cat_selector}    \#${idgrid_expenses} > div.lhv-table-body.viewport > div > div.lhv-tbody.viewport > div.lhv-tr.bg-editor.lhv-table-editor > div.lhv-td.c3.cell_select.category-cell > div > div
+${parent_selector}    \#categoryDropdown > li:nth-child(parent_id) > a
+${child_selector_add}    > ul > li:nth-child(child_id) > a
+
+*** Keywords ***
+Wait Until Expense Active Page Load
+    [Documentation]    COMMON_KEY: Wait expense active page load
+    #Sleep    ${TIMESLEEP}
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class, 'lhv-table-footer')]//a[@class="lhv-table-show"]    ${TIMEMAX}
+    Run Keyword If    ${value}    Log    Data expense displayed    ELSE    Wait Until Page Contains    No Expenses
+    ...    ${TIMEWAIT}
+
+Wait Until Page Load
+    [Arguments]    ${message_empty}
+    [Documentation]    COMMON_KEY: Wait page load with input parameter message
+    Sleep    ${TIMESLEEP}
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains    ${message_empty}    ${TIMEWAIT}
+    Run Keyword If    ${value}    Log    ${message_empty} displayed.    ELSE    Wait Until Page Contains Element    xpath=.//div[contains(@class, 'lhv-table-footer')]//a[@class="lhv-table-show"]
+    ...    ${TIMEOUT}
+
+Wait Until Gird Page Load
+    [Arguments]    ${id_grid}    ${msg_empty}
+    [Documentation]    COMMON_KEY: Wait until row data show in gird data base on gird ID,
+    ...    If grid empty data, page will wait message empty data show
+    Sleep    ${TIMESLEEP}
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[@id='${id_grid}']//div[@data-row='0']/div[@data-col='1']    ${TIMEMAX}
+    Run Keyword If    ${value}    Log    All data row are displayed.    ELSE    Wait Until Page Contains    ${msg_empty}
+    ...    ${TIMEWAIT}
+
+Select Expense Grid Row
+    [Arguments]    ${row_number}
+    [Documentation]    COMMON_KEY: Click expense row in grid by row number
+    Wait Until Page Contains Element    xpath=.//div[@class='grid']//div[@data-row='${row_number}']/div[@data-col='2']    ${TIMEWAIT}    # Wait expense with row number =${row_number} display
+    Click Element    xpath=.//div[@class='grid']//div[@data-row='${row_number}']/div[@data-col='2']    # Select the row to edit
+
+Create Bulk Expenses
+    [Arguments]    ${number}    ${parent}    ${child}    ${lable}    ${cat_map}
+    [Documentation]    COMMON_KEY: Creates multiple expense with random input values
+    : FOR    ${I}    IN RANGE    0    ${number}
+    \    Create Expense    ${parent}    ${child}    ${lable} ${I}    ${cat_map}
+    #\    Create Expense And Input Basic Values    ${parent}    ${child}    ${lable} ${I}    ${cat_map}
+
+Create Bulk Expenses With Phuoc Keyword Create
+    [Arguments]    ${number}    ${parent}    ${child}    ${lable}    ${cat_map}
+    [Documentation]    COMMON_KEY: Creates multiple expense with input basic values
+    : FOR    ${I}    IN RANGE    0    ${number}
+    \    Create Expense And Input Basic Values    ${EMPTY}    ${lable} ${I}    ${parent}    ${EMPTY}    150
+    \    ...    ${EMPTY}
+
+Create Random Expense
+    [Arguments]    ${label}    ${category_map}
+    [Documentation]    COMMON_KEY: Creates a single expense with random almost all fields
+    ${value}    Run Keyword and Return Status    Page Should Not Contain Element    xpath=.//div[@class="lhv-tr bg-editor lhv-table-editor"][contains(@style,"display: block;")]
+    Run Keyword If    ${value}    Click Element    ${idbtn_add_expense}    # Check form add expense display or not
+    Wait Until Page Contains Element    css=${expense_checkbox_selector}    # Wait checkbox display
+    Input Text    css=${merchant_tb_selector}    Test Merch ${label}    # Input merchant
+    @{category_tuple}    Select Random Category    ${category_map}
+    LOG    ${category_tuple}
+    @{chosen_cat_tuple}    Category Selector Builder    ${category_tuple}    ${parent_selector}    ${child_selector_add}
+    LOG    ${chosen_cat_tuple}
+    ${cat_css}    ${parent_cat}    Set Variable    ${chosen_cat_tuple}
+    LOG    ${cat_css}
+    LOG    ${parent_cat}
+    ${js}    Catenate    SEPARATOR=    $(\'    ${cat_css}    \').click()
+    Log    ${js}
+    Execute Javascript    ${js}    # Input category
+    Run Keyword If    '${parent_cat.lower()}' == 'time'    Populate Time    ${cat_css}    # Check category "time", add more fields
+    ${dollar_value}    Evaluate    random.randint(0, 1000)    random
+    ${cent_value}    Evaluate    random.randint(0, 99)    random
+    LOG    ${parent_cat.lower()}
+    ${expense_price}    Catenate    SEPARATOR=.    ${dollar_value}    ${cent_value}
+    Run Keyword Unless    '${parent_cat.lower()}' == 'time'    Input Text    ${xpath_ec_amount}    ${expense_price}    # Input amount
+    Click Element    css=${save_btn_selector}    # Save expense
+
+Create Expense
+    [Arguments]    ${parent_cat}    ${child_cat}    ${label}    ${category_map}
+    [Documentation]    COMMON_KEY: Creates an expense with radom categoy
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[@class="lhv-tr bg-editor lhv-table-editor"][contains(@style,"display: block;")]
+    Run Keyword If    ${value}    Log    Page contain table editor already.    ELSE    Click Element    ${idbtn_add_expense}
+    ...    # Check form add expense display or not
+    Wait Until Page Contains Element    css=${expense_checkbox_selector}    # Wait checkbox display
+    Input Text    css=${merchant_tb_selector}    Test Merch ${label}    # Input merchant
+    @{category_tuple}    Select Specific Category    ${parent_cat}    ${child_cat}    ${category_map}
+    Run Keyword If    '${category_tuple[0]}' == 'False'    Fail    ${category_tuple[1]}
+    LOG    ${category_tuple}
+    @{chosen_cat_tuple}    Category Selector Builder    ${category_tuple}    ${parent_selector}    ${child_selector_add}
+    LOG    ${chosen_cat_tuple}
+    ${cat_css}    ${parent_cat}    Set Variable    ${chosen_cat_tuple}
+    LOG    ${cat_css}
+    LOG    ${parent_cat}
+    ${js}    Catenate    SEPARATOR=    $(\'    ${cat_css}    \').click()
+    Log    ${js}
+    Execute Javascript    ${js}
+    Run Keyword If    '${parent_cat.lower()}' == 'time'    Populate Time    ${cat_css}    # Check category "time", add more fields
+    ${dollar_value}    Evaluate    random.randint(0, 1000)    random
+    ${cent_value}    Evaluate    random.randint(0, 99)    random
+    LOG    ${parent_cat.lower()}
+    ${expense_price}    Catenate    SEPARATOR=.    ${dollar_value}    ${cent_value}
+    Run Keyword Unless    '${parent_cat.lower()}' == 'time'    Input Text    ${xpath_ec_amount}    ${expense_price}    # Input amount
+    Click Element    css=${save_btn_selector}    # Save expense
+    Sleep    1s
+
+Create Expense And Input Basic Values
+    [Arguments]    ${date}    ${merchant}    ${parent_category}    ${child_category}    ${amount}    ${report}
+    [Documentation]    COMMON_KEY: Create expense with input basic expense values.
+    ...    Example -> Create Expense And Input Values | ${prev_start_tripdate} | New expense meals | ${EMPTY} | 150 | ${EMPTY}
+    ${value}    Run Keyword and Return Status    Page Should Contain Element    id=btnAddExpense
+    Run Keyword If    '${value}' == 'False'    Set Suite Variable For Report Page    gridReportExpenses    id=btnAddNewExpense    ELSE    Set Suite Variable For Report Page
+    ...    grid    id=btnAddExpense    # Change ID list & add expense for page
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[@class="lhv-tr bg-editor lhv-table-editor"][contains(@style,"display: block;")]    # Check add form display or not
+    Run Keyword If    ${value}    Log    Page contain table editor already.    ELSE    Click Element    ${idbtn_add_expense}
+    Input Expense Basic Values    ${date}    ${merchant}    ${parent_category}    ${child_category}    ${amount}    ${report}
+    Click Element    xpath=.//div[@id='${idgrid_expenses}']//*[contains(@class,'btn-save-changes')]    # Submit save expense
+    Sleep    ${TIMESLEEP}
+
+Create Expense And Input Detail Values
+    [Arguments]    ${date}    ${merchant}    ${parent_category}    ${child_category}    ${amount}    ${report}
+    ...    ${project}    ${client}    ${attendees}    ${currency}    ${note}    ${tags}
+    ...    ${department}    ${reimbursable}    ${billable}    ${clazz}    ${make_recurring}    ${location}
+    ...    ${from_values}    ${to_values}
+    [Documentation]    COMMON_KEY FOR Setup TRIPIT: Create expense with input detail. Ex -> Create Expense And Input Detail Values | ${prev_start_tripdate} | New expense meals | ${EMPTY} | 150 | ${EMPTY} | Sample_Client | Sample_Prj
+    ${value}    Run Keyword and Return Status    Page Should Contain Element    id=btnAddExpense    # Check add expense in active page or report page
+    Run Keyword If    '${value}' == 'False'    Set Suite Variable For Report Page    gridReportExpenses    id=btnAddNewExpense    ELSE    Set Suite Variable For Report Page
+    ...    grid    id=btnAddExpense
+    Click Element    ${idbtn_add_expense}
+    Wait Until Page Contains Element    xpath=.//*[contains(@class,'lhv-table-editor')][contains(@style,'display: block;')]    ${TIMEWAIT}    # Wait expense form display
+    Input Expense Basic Values    ${date}    ${merchant}    ${parent_category}    ${child_category}    ${amount}    ${report}
+    Input Expense Detail Values    ${project}    ${client}    ${attendees}    ${currency}    ${note}    ${tags}
+    ...    ${department}    ${reimbursable}    ${billable}    ${clazz}    ${make_recurring}    ${location}
+    ...    ${from_values}    ${to_values}
+    Click Element    id=saveEditTranButton    # Submit save expense
+    Sleep    ${TIMESLEEP}
+
+Input Expense Basic Values
+    [Arguments]    ${date}    ${merchant}    ${parent_category}    ${child_category}    ${amount}    ${report}
+    [Documentation]    COMMON_KEY: Input expense with basic value.
+    Run Keyword If    '${date}'=='${EMPTY}'    Log    Date select is current day.    ELSE    Select Date Time Picker    ${date}
+    ...    # Select date if agrument date not empty
+    Sleep    2s
+    Input Text    ${xpath_ec_merchant}    ${merchant}    # Input merchant
+    Select Expense Category    ${parent_category.title()}    ${child_category.title()}    # Select Category
+    Input Text    ${xpath_ec_amount}    ${amount}    # Input amount
+    Run Keyword If    '${report}'=='${EMPTY}'    Log    Report empty.    ELSE    Select Dropdown Report    c5
+    ...    ${report}    # Select report if agrument report not empty
+
+Input Expense Detail Values
+    [Arguments]    ${project}    ${client}    ${attendees}    ${currency}    ${note}    ${tags}
+    ...    ${department}    ${reimbursable}    ${billable}    ${clazz}    ${make_recurring}    ${location}
+    ...    ${from_values}    ${to_values}
+    [Documentation]    COMMON_KEY: Input value into editor detail panel. Ex -> Input Expense Detail Values And Submit | Sample_Client | Sample_Prj |
+    Click Element    id=editDetailsButton    # Click element to expand edit detail form
+    Run Keyword If    '${project}'=='${EMPTY}'    Log    Project is empty values.    ELSE    Input Autocomplete Field    id=project
+    ...    ${project}    # Input project if not empty
+    Run Keyword If    '${client}'=='${EMPTY}'    Log    Client is empty values.    ELSE    Input Autocomplete Field    id=client
+    ...    ${client}    # Input client if not empty
+    Run Keyword If    '${attendees}'=='${EMPTY}'    Log    Attendees is empty values.    ELSE    Input Text    id=attendees
+    ...    ${attendees}    # Input attendees if not empty
+    Run Keyword If    '${currency}'=='${EMPTY}'    Log    Currency dropdown not select.    ELSE    Select Dropdown    currency_chzn
+    ...    ${currency.upper()}    # Select dropdown currency if not empty
+    Run Keyword If    '${note}'=='${EMPTY}'    Log    Note is empty values.    ELSE    Input Text    id=note
+    ...    ${note}    # Input note if not empty
+    Run Keyword If    '${tags}'=='${EMPTY}'    Log    Tag is empty values.    ELSE    Input Text    id=tranTagInput
+    ...    ${tags}    # Input tags if not empty
+    Run Keyword If    '${department}'=='${EMPTY}'    Log    Department is empty values.    ELSE    Input Autocomplete Field    id=department
+    ...    ${department}    # Input department if not empty
+    Run Keyword If    '${reimbursable}'=='${EMPTY}'    Log    Reimbursable dropdown not select.    ELSE    Select Dropdown    prePaid_chzn
+    ...    ${reimbursable}    # Select dropdown reimbursable if not empty
+    Run Keyword If    '${billable}'=='${EMPTY}'    Log    Billable dropdown not select.    ELSE    Select Dropdown    billable_chzn
+    ...    ${billable}    # Select dropdown billable if not empty
+    Run Keyword If    '${clazz}'=='${EMPTY}'    Log    Class is empty values.    ELSE    Input Autocomplete Field    id=clazz
+    ...    ${clazz}    # Input class if not empty
+    Run Keyword If    '${make_recurring}'=='${EMPTY}'    Log    Checkbox Make Recurring is empty values.    ELSE    Select Checkbox    id=chkMakeRecurring
+    ...    # Select checkbox make_recurring if not empty
+    Run Keyword If    '${location}'=='${EMPTY}'    Log    Location is empty values.    ELSE    Input Autocomplete Field    id=location
+    ...    ${location}    # Input location if not empty
+    Run Keyword If    '${from_values}'=='${EMPTY}'    Log    From To Cont is empty values.    ELSE    Input Expense Detail From To Cont    ${from_values}
+    ...    ${to_values}    # Input from and to values if not empty
+
+Input Autocomplete Field
+    [Arguments]    ${id_field}    ${values_field}
+    [Documentation]    COMMON_KEY: Input value into autocomplete field (Add expense): Project, Client, Department. # EX: id=project | Ackies Construction Incorporated
+    Page Should Contain Textfield    ${id_field}    # Verify page contain text field
+    Press Key    ${id_field}    \\32    # Press Spacebar to show autocomplete if exist
+    ${val_autocomplete_show}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//ul[contains(@class,'ui-autocomplete')][contains(@style,'display: block;')]    1500ms
+    Log    ${val_autocomplete_show}
+    Input Text    ${id_field}    ${values_field}    # Input values
+    Sleep    1500ms
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//ul[contains(@class,'project-client-suggest')][contains(@style,'display: block')]/li[@class='ui-autocomplete-group']    # Check autocomplete display or not
+    Run Keyword If    ${value}    Click Element    xpath=.//ul[contains(@class,'project-client-suggest')][contains(@style,'display: block')]//a/strong[text()="${values_field}"]    ELSE    Log    Value not exist, add new value "${values_field}" in to Autocomplete Field.
+    ...    #warn
+    #Wait Until Page Contains Element    xpath=.//ul[contains(@class,'project-client-suggest')][contains(@style,'display: block')]/li[@class='ui-autocomplete-group']    ${TIMEWAIT}
+    #Click Element    xpath=.//ul[contains(@class,'project-client-suggest')][contains(@style,'display: block')]//a/strong[text()="${values_field}"]
+
+Input Expense Detail From To Cont
+    [Arguments]    ${from_values}    ${to_values}
+    [Documentation]    COMMON_KEY: Input values into detail form (From/To)
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//li[@id='fromToCont'][@style='display: list-item;']/input[@id='fromTxt']
+    Run Keyword If    Input Expense Hidden Field    ${from_values}    ${to_values}    ELSE    Log    Fields hidden not display.
+    Run Keyword If    ${value}    Input Text    id=fromTxt    # Input From field
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//li[@id='fromToCont'][@style='display: list-item;']/input[@id='toTxt']
+    Run Keyword If    Input Expense Hidden Field    ${from_values}    ${to_values}    ELSE    Log    Fields hidden not display.
+    Run Keyword If    ${value}    Input Text    id=toTxt    # Input To field
+
+Input Expense Hidden Field
+    [Arguments]    ${from_values}    ${to_values}
+    [Documentation]    SUB keyword for parent key: 'Input Expense Detail From To Cont'
+    Log    ${from_values}    NOT IMPLEMENT YET
+
+Select Expense Category
+    [Arguments]    ${parent_category}    ${child_category}
+    [Documentation]    COMMON_KEY: Hover and select expense category
+    Click Element    xpath=.//div[contains(@class,'lhv-table-editor')]//div[contains(@class,'category-cell')]//div[@class='select_editor_button']    # Click arrow category
+    Run Keyword If    '${child_category}'=='${EMPTY}'    Click Parent Expense Category    ${parent_category}    ELSE    Click Child Expense Category    ${parent_category}
+    ...    ${child_category}
+
+Click Parent Expense Category
+    [Arguments]    ${parent_category}
+    [Documentation]    COMMON_KEY: Select category with parent value
+    ...    SUB keywork for parent key: "Select Expense Category"
+    Page Should Contain Element    xpath=.//div[@id='categoryDropdownContainer']//a[@title='${parent_category}']
+    Mouse Over    xpath=.//div[@id='categoryDropdownContainer']//a[@title='${parent_category}']    # Hover parent value
+    Sleep    1s
+    Click Element    xpath=.//div[@id='categoryDropdownContainer']//a[@title='${parent_category}']    # Click parent value
+
+Click Child Expense Category
+    [Arguments]    ${parent_category}    ${child_category}
+    [Documentation]    COMMON_KEY: Select category with child value
+    ...    SUB keywork for parent key: "Select Expense Category"
+    Page Should Contain Element    xpath=.//div[@id='categoryDropdownContainer']//a[@title='${parent_category}']
+    Mouse Over    xpath=.//div[@id='categoryDropdownContainer']//a[@title='${parent_category}']    # Hover parent value
+    Sleep    1s
+    #Wait Until Page Contains Element    xpath=.//div[@id='categoryDropdownContainer']//ul[contains(@class,'shadow-dropdown')][contains(@style,'display: block;')]    ${TIMEWAIT}    # Check dropdown value show
+    #Page Should Contain Element    xpath=.//div[@id='categoryDropdownContainer']//ul[contains(@class,'shadow-dropdown')][contains(@style,'display: block;')]//a[@title='${child_category}']
+    Mouse Over    xpath=.//div[@id='categoryDropdownContainer']//ul[contains(@class,'shadow-dropdown')]//a[@title='${child_category}']    # Hover child value
+    Sleep    1s
+    Click Element    xpath=.//div[@id='categoryDropdownContainer']//ul[contains(@class,'shadow-dropdown')]//a[@title='${child_category}']    # Click child value
+
+Select Dropdown Report
+    [Arguments]    ${column}    ${report_name}
+    [Documentation]    COMMON_KEY: Select dropdown report in add expense form
+    Click Element    xpath=.//div[contains(@class, "${column}")]//div[@class="select_editor_button"]    # Click arrow dropdown
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[contains(@class, 'reportDropdown')]/input[contains(@style,'display: block;')]    # Check dropdown values show
+    Log    ${value}
+    Run Keyword If    ${value}    Input Report Name And Press Enter Key    ${column}    ${report_name}    ELSE    Click Report Name
+    ...    ${column}    ${report_name}
+
+Input Report Name And Press Enter Key
+    [Arguments]    ${column}    ${report_name}
+    [Documentation]    SUB keyword for 'Select Dropdown Report'
+    Input Text    xpath=.//div[contains(@class, 'reportDropdown')]/input    ${report_name}    # Input report value
+    Press Key    xpath=.//div[contains(@class, 'reportDropdown')]/input    \\13    # Press Enter key
+
+Click Report Name
+    [Arguments]    ${column}    ${report_name}
+    [Documentation]    SUB keyword for 'Select Dropdown Report'
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[contains(@class, 'reportDropdown')]//li[contains(@data-name, '${report_name}')]    # Check and click if report value exist
+    Run Keyword If    ${value}    Click Element    xpath=.//div[contains(@class, 'reportDropdown')]//li[contains(@data-name, '${report_name}')]    ELSE    Log    Report name not exists.
+    ...    warn
+
+Select Date Time Picker
+    [Arguments]    ${date_time}
+    [Documentation]    COMMON_KEY: Select date with format 'Month DD YY'. EX: 'Jul 15 14' OR 'July 15 14' OR 'December1014'
+    Sleep    2s
+    Click Element    ${xpath_ec_date}    # Click date field
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[@id='ui-datepicker-div'][contains(@style,'display: block;')]    # Check and click to display form select date if not exist
+    Run Keyword If    ${value}    Log    Date time picker existed.    ELSE    Click Element    ${xpath_ec_date}
+    Wait Until Page Contains Element    xpath=.//div[@id='ui-datepicker-div'][contains(@style,'display: block;')]    ${TIMEWAIT}    # Verify form select date display
+    Log    ${date_time}
+    Select Year    ${date_time}    # Select year
+    Select Month Of Year    ${date_time}    # Select month of year
+    Select Day Of Month    ${date_time}    # Select Day of month
+
+Verify Date
+    [Arguments]    ${date_time}
+    [Documentation]    SUB keyword for parent key: 'Select Date Time Picker'
+    ${year_select}=    Get Year    ${date_time}
+    ${month_select}=    Get Month    ${date_time}
+    ${month_select_long}=    Convert Sort Month To Long    ${month_select}
+    ${day_select}=    Get Day    ${date_time}
+    Element Text Should Be    xpath=.//*[@id='ui-datepicker-div']//*[@class="ui-datepicker-year"]    ${year_select}    # Verify year in datetimepicker
+    Element Text Should Be    xpath=.//*[@id='ui-datepicker-div']//*[@class="ui-datepicker-month"]    ${month_select_long}    # Verify month in datetimepicker
+    Page Should Contain Element    xpath=.//*[@id='ui-datepicker-div']//a[contains(.,"${day_select}")]    # Verify date in datetimepicker
+
+Select Day Of Month
+    [Arguments]    ${date_time}
+    [Documentation]    SUB keyword for parent key: 'Select Date Time Picker'
+    ${day_select}=    Get Day    ${date_time}
+    ${date_selected}    Run Keyword And Return Status    Verify Date    ${date_time}
+    Run Keyword If    ${date_selected}    Click Element    xpath=.//*[@id='ui-datepicker-div']//a[contains(.,"${day_select}")]    ELSE    Log    Day select not exists.
+    ...    warn    # Check current date displayed
+
+Select Month Of Year
+    [Arguments]    ${date_time}
+    [Documentation]    Select month with format 'July 15 14'
+    ...    SUB keyword for parent key: 'Select Date Time Picker'
+    ${year_curent}=    Get Text    xpath=.//*[@id='ui-datepicker-div']//*[@class="ui-datepicker-year"]
+    ${year_select}=    Get Year    ${date_time}
+    ${month_curent_str}=    Get Text    xpath=.//*[@id='ui-datepicker-div']//*[@class="ui-datepicker-month"]
+    ${month_curent_num}=    convert month to number    ${month_curent_str}
+    ${month_select_str}=    Get Month    ${date_time}
+    ${month_select_num}=    convert month to number    ${month_select_str}
+    ${value}    Run Keyword And Return Status    Should Be Equal    ${month_curent_num}    ${month_select_num}    # Check month
+    Run Keyword If    '${value}'=='False'    Compare Month And Select Arrow    ${month_curent_str}    ${month_select_str}    ${month_curent_num}    ${month_select_num}
+    ...    # Check month and select arrow datetimepicker if month not exist
+
+Compare Month And Select Arrow
+    [Arguments]    ${month_curent_str}    ${month_select_str}    ${month_curent_num}    ${month_select_num}
+    [Documentation]    SUB keyword for parent key: 'Select Date Time Picker'
+    ${value}    Run Keyword And Return Status    Should Be True    ${month_curent_num}<${month_select_num}    # Compare month and select arrow NEXT or PREV
+    Run Keyword If    ${value}    Click Arrow Date Time Picker    month    ${month_select_str}    Next    ELSE
+    ...    Click Arrow Date Time Picker    month    ${month_select_str}    Prev
+
+Select Year
+    [Arguments]    ${date_time}
+    [Documentation]    Select year with format 'July 15 14'
+    ...    SUB keyword for parent key: 'Select Date Time Picker'
+    ${year_curent}=    Get Text    xpath=.//*[@id='ui-datepicker-div']//*[@class="ui-datepicker-year"]
+    ${year_select}=    Get Year    ${date_time}
+    ${value}    Run Keyword And Return Status    Should Be Equal    ${year_curent}    ${year_select}    # Check year
+    Run Keyword If    '${value}'=='False'    Compare Year And Select Arrow    ${year_curent}    ${year_select}
+
+Compare Year And Select Arrow
+    [Arguments]    ${year_curent}    ${year_select}
+    [Documentation]    SUB keyword for parent key: 'Select Date Time Picker'
+    ${value}    Run Keyword And Return Status    Should Be True    ${year_curent}<${year_select}    # Compare year and select arrow NEXT or PREV
+    Run Keyword If    ${value}    For Loop Next Year    ${year_curent}    ${year_select}    Next    ELSE
+    ...    For Loop Prev Year    ${year_curent}    ${year_select}    Prev
+
+For Loop Next Year
+    [Arguments]    ${year_curent}    ${year_select}    ${button_name}
+    [Documentation]    SUB keyword for parent key: 'Select Date Time Picker'
+    ${year}    Set Variable    ${year_curent}
+    : FOR    ${INDEX}    IN RANGE    ${year_curent}    ${year_select}
+    \    ${year}=    Evaluate    ${year}+1
+    \    Click Arrow Date Time Picker    year    ${year}    ${button_name}
+
+For Loop Prev Year
+    [Arguments]    ${year_curent}    ${year_select}    ${button_name}
+    [Documentation]    SUB keyword for parent key: 'Select Date Time Picker'
+    ${year}    Set Variable    ${year_curent}
+    : FOR    ${INDEX}    IN RANGE    ${year_select}    ${year_curent}
+    \    ${year}=    Evaluate    ${year}-1
+    \    Click Arrow Date Time Picker    year    ${year}    ${button_name}
+
+Click Arrow Date Time Picker
+    [Arguments]    ${label}    ${select_value}    ${button_name}
+    [Documentation]    Click arrow of Date time picker with lable 'year' or 'month'
+    ...    SUB keyword for parent key: 'Select Date Time Picker'
+    Click Element    xpath=.//*[@id='ui-datepicker-div']//span[contains(@class,'ui-icon-circle-triangle-')][contains(.,'${button_name}')]
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//*[@id='ui-datepicker-div']//*[@class="ui-datepicker-${label}"][contains(.,'${select_value}')]
+    Run Keyword If    ${value}    Log    ${label} selected    ELSE    Click Arrow Date Time Picker    ${label}
+    ...    ${select_value}    ${button_name}
+
+Get Year
+    [Arguments]    ${date_time}
+    [Documentation]    COMMON_KEY: Get date format (MM/DD/YY, ex: June 19 14, result: 2014)
+    ...    SUB keyword for parent key: 'Select Date Time Picker'
+    ${date_trim}=    Set Variable    ${date_time.replace(" ", "")}
+    Log    ${date_trim}
+    ${date_length} =    Get Length    ${date_trim}
+    ${position}=    Evaluate    ${date_length}-2
+    ${year_select}=    Set Variable    20${date_trim[${position}:]}
+    [Return]    ${year_select}
+
+Get Month
+    [Arguments]    ${date_time}
+    [Documentation]    COMMON_KEY: Get date format (MM/DD/YY, ex: March 19 14, result: March)
+    ...    SUB keyword for parent key: 'Select Date Time Picker'
+    ${date_trim}=    Set Variable    ${date_time.replace(" ", "")}
+    Log    ${date_trim}
+    ${date_length} =    Get Length    ${date_trim}
+    ${position}=    Evaluate    ${date_length}-4
+    ${month_select}=    Set Variable    ${date_trim[:${position}]}
+    [Return]    ${month_select}
+
+Get Day
+    [Arguments]    ${date_time}
+    [Documentation]    COMMON_KEY: Get date format (MM/DD/YY, ex: June 19 14, result: 19)
+    ...    SUB keyword for parent key: 'Select Date Time Picker'
+    ${date_trim}=    Set Variable    ${date_time.replace(" ", "")}
+    Log    ${date_trim}
+    ${date_length} =    Get Length    ${date_trim}
+    ${position}=    Evaluate    ${date_length}-2
+    ${date_select}=    Set Variable    ${date_trim[${position}-2:${position}]}
+    Run Keyword If    '${date_select[:1]}'=='0'    Set Suite Variable    ${date_select}    ${date_select[1:]}
+    [Return]    ${date_select}
+
+Get Current Day
+    [Documentation]    COMMON_KEY: Get current date (Return format: "June 19 14")
+    ${date}=    Evaluate    time.strftime("%b %d %y", time.localtime())    time
+    [Return]    ${date}
+
+Delete Current Expenses
+    [Documentation]    COMMON_KEY: Deletes Currently displayed expenses using select all checkbox
+    ${expense_present}    Run Keyword And Return Status    Page Should Contain    No Expenses
+    Pass Execution If    '${expense_present}' == 'True'    No Expenses Found
+    Select Checkbox    xpath=.//*[@id="grid"]/div[2]/div/div[1]/div/div[1]/span/input    # Select first expense
+    Click Element    xpath=.//*[@id="btnDeleteExpense"]/i/i/span    # Submit delete
+    [Return]    Page Should Contain    No Expenses
+
+Delete All Current Expenses If Exists
+    [Documentation]    COMMON_KEY: Deletes all current expenses
+    Click Ec Link    expenses    active    ${EMPTY}    # Access expenses active page
+    Wait Until Expense Active Page Load
+    ${value}    Run Keyword And Return Status    Page Should Contain    No Expenses
+    Run Keyword If    ${value}    Log    No Expenses exists.    ELSE    Delete All Expenses
+
+Delete All Expenses
+    [Documentation]    SUB key for "Delete All Current Expenses If Exists": Deletes all current expenses.
+    Wait Until Page Contains Element    xpath=.//*[@id="grid"]/div[2]/div/div[1]/div/div[1]/span/input    ${TIMEWAIT}
+    Select Checkbox    xpath=.//*[@id="grid"]/div[2]/div/div[1]/div/div[1]/span/input    # Select checkbox all expenses
+    Click Element    xpath=.//*[@id="btnDeleteExpense"]/i/i/span    # Click button delete
+    # ------------------- ALL KEYWORD BELOW NOT USE YET ------------------- #
+    [Return]    Page Should Contain    No Expenses
+
+Add Receipt to Expense Line Item
+    [Documentation]    This is used directly after the Expense is generated and saved. Must be the only expense on the report.
+    Click Link    /expenses/receipts
+    ${receipt_image_present}    Run Keyword And Return Status    Wait Until Page Contains Element    ${receipt_image_path}
+    Run Keyword If    '${receipt_image_present}' == 'False'    Reload Page
+    Drag And Drop    ${receipt_image_path}    ${expense_line_path}
+    Click Link    /expenses/active
+
+Create Report From All Expenses
+    Wait Until Page Contains Element    xpath=.//*[@id="grid"]/div[2]/div/div[1]/div/div[1]/span/input    ${TIMEWAIT}    # Wait checkbox to select all expenses
+    ${report_name}    Generate Random String
+    Click Link    link=100    # Click filter 100 expense
+    Select Checkbox    xpath=.//*[@id="grid"]/div[2]/div/div[1]/div/div[1]/span/input    # Select checkbox
+    Click Element    xpath=.//*[@id="btnCreateReport"]/i/i/span    # Click button create report
+    Input Text    xpath=.//*[@id="frmReportName"]/input    ${report_name}    # Input report name
+    ${report_name}    Catenate    SEPARATOR=    ${report_name}    .pdf
+    Log    Report Name: ${report_name}
+    Click Element    xpath=.//*[@id="reportFunctionsContainer"]/button[2]
+    #Do not use, this is still buggy and chances are will not work.
+
+Display Children
+    [Arguments]    ${parent_xpath}
+    [Documentation]    The only thing this keyword is for is to open the parent category and display the children. Otherwise clicking the children using the xpath directly fails.
+    Click Element    //*[@id="grid"]/div[2]/div/div[2]/div[2]/div[4]/div/div
+    Execute Javascript
+    Focus    ${parent_xpath}
+
+Verify Report Download
+    Open Connection    ${win_box_ip}
+    Login    ${win_box_un}    ${win_box_pw}
+    ${win_download_path}    Catenate    SEPARATOR=/    ${downloads_path}    ${report_name}
+    ${file}    Execute Command    ls ${win_download_path}
+    Should Be Equal    ${file}    ${win_download_path}

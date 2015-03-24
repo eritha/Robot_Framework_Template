@@ -1,0 +1,128 @@
+*** Settings ***
+Documentation     ExpenseCloud Login testing
+Suite Setup       Set Server
+Test Teardown     Close All Browsers
+Resource          ../../conf/selenium_connect.txt
+Library           Selenium2Library
+
+*** Variables ***
+${expense_site}    https://dev02.app7.com/
+${unsubmitted_expenses}    Unsubmitted Expenses
+#XPATH:
+#VALUES
+#NOTE IF YOU CHANGE THESE VALUES YOU ALSO NEED TO UPDATE THE VALUES FOR Set Basic Company Policies Arguments
+${emptyspace}     ${EMPTY}
+#${receipt_for_amounts}    51
+#${date_of_expense_over}    1
+${max_ex_amount}    71
+#${max_ex_distance}    32
+#${Unknown_response}    No
+${location_LA}    Los Angeles
+${location_NY}    New York
+${air_fare_limit}    3000
+${gift_policy}    500
+${department}     Sales
+
+*** Test Cases ***
+TCA0_Basic flow (B) - Create advance policy with All conditions are met all rules by paid CO (0-sanityCheck)
+    [Documentation]    This is smoke testing for suite "Create Advance Expense Policy".
+    [Tags]    Smoke Testing    Advance Policies    Policies
+    # Rule:    Need define name correct with confluence "Basic flow (B) - Create advance policy with All conditions are met all rules by paid CO (0-sanityCheck)"
+    # Rule:    Create tag for TC, "Smoke Testing" tag for each basic flow TC, add tag completed/ Pending/ Bug for each TC
+    # Suggest: May add Documentation for each Tc
+    # User logs in as paid company owner
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    # Fix: Due to we need create new report to test this case, so we must delete all report exist.
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    Set Basic Company Policies Clear
+    Delete All Company Per Diem Policies Policies
+    Delete All Company Expense Policies
+    # Set Advance Company Policies
+    Click Setting Menu    ${EMPTY}    companies    policies
+    # 1. Create Advance Company Policy where Receipt required for amount over $${max_ex_amount}
+    Set Advance Company Policies    Receipt    Receipt required for amount over $${max_ex_amount}    All    Amount    Is greater than    ${EMPTY}
+    ...    ${max_ex_amount}    Any    Receipt    Is    Attached    ${EMPTY}
+    ...    Category    Is not    Mileage    ${EMPTY}    Category    Is not
+    ...    Time    ${EMPTY}
+    Sleep    ${TIMESLEEP}
+    Page Should Contain Element    xpath=.//div[@id='myPoliciesCont']/ul/li[1]/label/span[text()='Receipt']
+    Page Should Contain    Receipt
+    # 2. Create Advance Company Policy where Our cell phone policy limit is $${gift_policy} (excluding the Sales Department)
+    Set Advance Company Policies    Cell Phone Policy    Our cell phone policy limit is $${gift_policy} (excluding the sales Department)    All    Category    Is    Mobile
+    ...    ${EMPTY}    All    Amount    Is less than    ${EMPTY}    ${gift_policy}
+    ...    Department    Does not contain    ${EMPTY}    Sales    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    Sleep    ${TIMESLEEP}
+    Page Should Contain Element    xpath=.//div[@id='myPoliciesCont']/ul/li[2]/label/span[text()='Cell Phone Policy']
+    Page Should Contain    Cell Phone Policy
+    # 3. Create Advance Company Policy where Our Airfare expense policy is a $${air_fare_limit} limit
+    Set Advance Company Policies    Airfare Policy    Our Airfare expense policy is a $${air_fare_limit} limit    Any    Category    Is    Air Travel
+    ...    ${EMPTY}    Any    Amount    Is less than    ${EMPTY}    ${air_fare_limit}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    Sleep    ${TIMESLEEP}
+    Page Should Contain Element    xpath=.//div[@id='myPoliciesCont']/ul/li[3]/label/span[text()='Airfare Policy']
+    Page Should Contain    Airfare Policy
+    # 4. Create Advance Company Policy where Our gift policy is $${gift_policy}
+    Set Advance Company Policies    Gift Policy    Our gift policy is $${gift_policy}    Any    Category    Is    Gift
+    ...    ${EMPTY}    Any    Amount    Is less than    ${EMPTY}    ${gift_policy}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    Sleep    ${TIMESLEEP}
+    Page Should Contain Element    xpath=.//div[@id='myPoliciesCont']/ul/li[4]/label/span[text()='Gift Policy']
+    Page Should Contain    Gift Policy
+    # 5. Create Advance Company Policy where Anytime you are entering a billable expense, a receipt is required.
+    Set Advance Company Policies    Billable Expenses Require Receipt    Anytime you are entering a billable expense, a receipt is required.    Any    Billable    Is    Checked
+    ...    ${EMPTY}    All    Receipt    Is    Attached    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    Sleep    ${TIMESLEEP}
+    Page Should Contain Element    xpath=.//div[@id='myPoliciesCont']/ul/li[5]/label/span[text()='Billable Expenses Require Receipt']
+    Page Should Contain    Billable Expenses Require Receipt
+    # 6. Create Advance Company Policy where Our NY Hotel expense limit is ${gift_policy}
+    Set Advance Company Policies    NY Hotel Policy    Our NY Hotel expense limit is ${gift_policy}    All    Category    Is    Hotels
+    ...    ${EMPTY}    All    Amount    Is less than    ${EMPTY}    ${gift_policy}
+    ...    Location    Contains    ${EMPTY}    New York    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    Sleep    ${TIMESLEEP}
+    Page Should Contain Element    xpath=.//div[@id='myPoliciesCont']/ul/li[6]/label/span[text()='NY Hotel Policy']
+    Page Should Contain    NY Hotel Policy
+    Click Link    link=Mobile
+    Wait Until Page Contains    Mobile    ${TIMEOUT}
+    Select Main Menu    expenses    active
+    Wait Until Expense Active Page Load
+    # 1. Create expense with Receipt required for amounts over $${receipt_for_amounts}.
+    ${invalid_max_ex_amount}=    Evaluate    ${max_ex_amount}+1
+    Create Expense And Input Basic Values    ${EMPTY}    Hello Kitty Air    Travel    Air Travel    ${air_fare_limit}    ${EMPTY}
+    # 2. Create expense where gift is $${gift_policy}
+    Create Expense And Input Basic Values    ${EMPTY}    Best Buy    Miscellaneous    Gift    ${gift_policy}    ${EMPTY}
+    # 3. Create an expense where Advertising is $${invalid_max_ex_amount}
+    Create Expense And Input Detail Values    ${EMPTY}    Mad Men Advertising    Miscellaneous    Advertising    ${invalid_max_ex_amount}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    Billable    ${EMPTY}    ${EMPTY}    ${location_LA}
+    ...    ${EMPTY}    ${EMPTY}
+    # 4. Create an expense where Hotel expense is $${gift_policy} in ${location_NY}
+    Create Expense And Input Detail Values    ${EMPTY}    Four Seasons    Hotels    ${EMPTY}    ${gift_policy}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${location_NY}
+    ...    ${EMPTY}    ${EMPTY}
+    # 5. Create an expense where cell phone policy limit is $${gift_policy}
+    Create Expense And Input Basic Values    ${EMPTY}    Sprint    Miscellaneous    Mobile    ${gift_policy}    ${EMPTY}
+    # 6. Create an expense where cell phone policy limit is $${gift_policy} but its ${department}
+    Create Expense And Input Detail Values    ${EMPTY}    Sprint    Miscellaneous    Mobile    1000    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${department}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${location_NY}
+    ...    ${EMPTY}    ${EMPTY}
+    Submit Report All Curent Expense
+    # Verify invalid values for basic expense policies
+    Wait Until Page Contains    Expense Policy Violations    ${TIMEOUT}
+    Sleep    ${TIMESLEEP}
+    Page Should Contain    Receipt required for amount over $${max_ex_amount}
+    Page Should Contain    Our cell phone policy limit is $${gift_policy} (excluding the sales Department)
+    Page Should Contain    Our NY Hotel expense limit is ${gift_policy}
+    Page Should Contain    Anytime you are entering a billable expense, a receipt is required.
+    Page Should Contain    Our gift policy is $${gift_policy}
+    Page Should Contain    Our Airfare expense policy is a $${air_fare_limit} limit
+    # Clear All Company Expense Policies
+    Delete All Company Expense Policies

@@ -1,0 +1,324 @@
+*** Settings ***
+Documentation     /* Suite Export Report Approval Process */
+Suite Setup       Set Server
+Test Teardown     Close All Browsers
+Resource          ../../conf/selenium_connect.txt
+Library           Selenium2Library
+
+*** Variables ***
+${report_name_to_myapprove}    Report_B
+${report_name_to_myapprove_new}    Report_from_A
+${report_name_to_bookkeeper}    Report_A4
+${report_name_to_bookkeeper_new}    Report_2_from_A
+${url_yahoomail}    http://mail.yahoo.com/
+
+*** Test Cases ***
+TC_Basic Flow - Report To My Approve
+    [Documentation]    Precondition: Delete All reports, expenses; email owner, my approve. TC: Create new report and sent to my approve.
+    [Tags]    Smoke Testing    Export to My Approve    Suites Export Reports
+    Login EC And Delete All Integration    ${user_myapprover_A}    ${pass_general}
+    Log Out Expense Cloud
+    Open Yahoo Mail And Delete All Email If Exists    ${user_owner}    ${pass_general}
+    Open Yahoo Mail And Delete All Email If Exists    ${user_myapprover_A}    ${pass_general}
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    # Step 01
+    Create Expense And Input Basic Values    ${EMPTY}    E_1    Hotels    ${EMPTY}    10    ${EMPTY}
+    Create Expense And Input Basic Values    ${EMPTY}    E_2    Meals    ${EMPTY}    20    ${EMPTY}
+    Create Expense And Input Basic Values    ${EMPTY}    E_3    Mileage    ${EMPTY}    100    ${EMPTY}
+    # Step 02-04
+    Create Report And Export To Integration    ${report_name_to_myapprove}    Approver    My Approver
+    Verify Page Show Message    success    Exported Successfully.
+    # Step 05
+    Select Report By Report Name    ${report_name_to_myapprove}
+    Verify Expense Can't Be Edited    E_1
+    Verify Expense Can't Be Edited    E_2
+    Verify Expense Can't Be Edited    E_3
+    Page Should Contain Element    id=lnkUnlockReport
+    # Step 06
+    Modifies Report Name And Clicks Save Button    ${report_name_to_myapprove_new}
+    ${yyyy}    ${mm}    ${dd}    Get Time    year,month,day
+    ${approve_date}    Set Variable    ${yyyy}-${mm}-${dd}
+    #${approve_date}=    Get Date Time Zone    America/Tijuana    %m/%d/%Y
+    Log Out Expense Cloud
+    # Step 07-08: Open Yahoo Mail And Check Report
+    Login Yahoo Mail And Check Report    ${user_myapprover_A}    ${pass_general}    ${user_owner} has sent you an expense report to approve    ${report_name_to_myapprove}
+    # Step 09-10
+    Login EC And Verify Report Detail    ${user_myapprover_A}    ${pass_general}    ${report_name_to_myapprove}    ${report_name_to_myapprove_new}    An expense report for ${user_owner} is ready to be reviewed    ${approve_date}
+    ...    Pending
+    Page Should Contain    E_1
+    Page Should Contain    E_2
+    Page Should Contain    E_3
+    # Step 11
+    Click Button    id=btnApproved
+    Verify Report Approve Displayed
+    # Step 12
+    Select Main Menu    reports    approval
+    Wait Until Report Page Load
+    Select Dropdown    filterStatus_chzn    Approved Reports
+    Wait Until Report Page Load
+    Page Should Contain Element    xpath=.//div[@id='grid']//div[@data-row='0']/div[@data-col='6'][contains(.,'Approver')]
+    # Step 13
+    Click Link    /users/logout
+    Wait Until Page Contains Element    id=UserEmail    ${TIMEOUT}
+    Input Text    id=UserEmail    ${user_owner}
+    Input Text    id=UserPassword    ${pass_general}
+    Click Button    id=btnLogin
+    Reload Page And Wait Until Dashboard Page Contains    Report ${report_name_to_myapprove_new} was approved by ${user_myapprover_A}    ${approve_date}
+    Select Main Menu    reports    user
+    Wait Until Report Page Load
+    Page Should Contain Element    xpath=.//div[@id='grid']//div[@data-row='0']/div[@data-col='1'][contains(.,'Approved')]
+    Page Should Contain Element    xpath=.//div[@id='grid']//div[@data-row='0']/div[@data-col='6'][contains(.,'Approver')]
+    Click Element    xpath=.//div[@id='grid']//div[contains(@class,'r0')]/div[contains(@class,'c2')]/a
+    Wait Until Page Contains Element    xpath=.//div[@id='gridReportExpenses']//div[@data-row='0']/div[@data-col='2']    ${TIMEMAX}
+    # Step 15
+    Click Element    xpath=.//button[contains(@class,'btn-print-pdf')]
+    Select Window    title=TriNet Expense ${report_name_to_myapprove_new}
+    ${report_date}=    Evaluate    time.strftime("%Y-%m-%d", time.localtime())    time
+    Page Should Contain Element    xpath=.//table[@class='tbl-title']//td[contains(.,'${report_date}')]    # Verify report date
+    ${report_date}=    Evaluate    time.strftime("%m%d%Y", time.localtime())    time
+    Page Should Contain Element    xpath=.//img[contains(@src,'/signatures/date_${report_date}.jpg')]    # Verify signatures date
+    # Step 16
+    Login Yahoo Mail And Check Report Approved    ${user_owner}    ${pass_general}    Your Expense Report Has Been Approved    ${report_name_to_myapprove_new}
+
+TC_Send Unsubmitted Report To Next Approver By Report Owner (A17) - (1-High)
+    [Tags]    Export to Next Approve    Suites Export Reports
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Log Out Expense Cloud
+    Create Bulk Expenses And Submit Unsubmited Report    2    Miscellaneous    Mobile    Expense fof Next Approve hiden
+    Select Main Menu    reports    user
+    Select Dropdown    filterStatus_chzn    Unsubmitted Reports
+    Wait Until Page Contains Element    xpath=.//div[@id='grid']//div[@data-row='0']/div[@data-col='2']    ${TIMEOUT}
+    #Select Report By Report Name    ${report_name_to_myapprove}
+    Click Element    xpath=.//div[@id='grid']//div[contains(@class,'r0')]/div[contains(@class,'c2')]/a
+    Wait Until Page Contains Element    xpath=.//div[@id='gridReportExpenses']//div[@data-row='0']/div[@data-col='2']    ${TIMEMAX}
+    Dropdown Should Not Contain Connection Or Integration    exportType_chzn    Approver2
+
+TC_Send The Approval Report To My Approver By Approver (A18) - (2-Medium)
+    [Tags]    Export Approval Report    Suites Export Reports
+    Log In    ${sever_test}    ${user_myapprover_A}    ${pass_general}
+    Click Setting Menu    settings    report    ${EMPTY}
+    Delete Connection Or Integrations By Name If Exists    Approver2
+    Delete Connection Or Integrations By Name If Exists    Bookkeeper
+    Setup A Connection In Setting Page    Approver2    ${user_nextapprover_B}
+    Setup A Connection In Setting Page    Bookkeeper    ${user_bookkeeper_C}
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Page Contains Element    xpath=.//div[@id='grid']//div[@data-row='0']/div[@data-col='2']    ${TIMEOUT}
+    #Select Report By Report Name    ${report_name_to_myapprove}
+    Click Element    xpath=.//div[@id='grid']//div[contains(@class,'r0')]/div[contains(@class,'c1')]/a
+    Wait Until Page Contains Element    xpath=.//div[@id='gridReportExpenses']//div[@data-row='0']/div[@data-col='2']    ${TIMEMAX}
+    Dropdown Should Not Contain Connection Or Integration    exportType_chzn    Approver
+
+TC_Basic Flow - Report To Bookeeper
+    [Documentation]    Precondition: Delete All reports, expenses; email owner, bookkeeper. TC: Create new report and sent to bookkeeper.
+    [Tags]    Export Bookkeeper    Suites Export Reports
+    Open Yahoo Mail And Delete All Email If Exists    ${user_owner}    ${pass_general}
+    Open Yahoo Mail And Delete All Email If Exists    ${user_bookkeeper_C}    ${pass_general}
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    # Step 01
+    Create Expense And Input Basic Values    ${EMPTY}    E_1    Hotels    ${EMPTY}    10    ${EMPTY}
+    Create Expense And Input Basic Values    ${EMPTY}    E_2    Meals    ${EMPTY}    20    ${EMPTY}
+    Create Expense And Input Basic Values    ${EMPTY}    E_3    Mileage    ${EMPTY}    100    ${EMPTY}
+    # Step 02-04
+    Create Report And Export To Integration    ${report_name_to_bookkeeper}    Bookkeeper    My Bookkeeper
+    Verify Page Show Message    success    Exported Successfully.
+    # Step 05
+    Select Report By Report Name    ${report_name_to_bookkeeper}
+    Verify Expense Can't Be Edited    E_1
+    Verify Expense Can't Be Edited    E_2
+    Verify Expense Can't Be Edited    E_3
+    Page Should Contain Element    id=lnkUnlockReport
+    # Step 06
+    Modifies Report Name And Clicks Save Button    ${report_name_to_bookkeeper_new}
+    ${yyyy}    ${mm}    ${dd}    Get Time    year,month,day
+    ${approve_date}    Set Variable    ${yyyy}-${mm}-${dd}
+    Log Out Expense Cloud
+    # Step 07-08: Open Yahoo Mail And Check Report
+    Login Yahoo Mail And Check Report    ${user_bookkeeper_C}    ${pass_general}    ${user_owner} has sent you an expense report for your records    ${report_name_to_bookkeeper}
+    # Step 09-10
+    Login EC And Verify Report Detail    ${user_bookkeeper_C}    ${pass_general}    ${report_name_to_bookkeeper}    ${report_name_to_bookkeeper_new}    An expense report for ${user_owner} is ready to be reviewed    ${approve_date}
+    ...    Approved
+    Page Should Contain    E_1
+    Page Should Contain    E_2
+    Page Should Contain    E_3
+    Page Should Contain Element    xpath=.//div[@id='submitReportCont'][contains(@style,'display: block;')]//button[@id='setupExport']
+    Page Should Contain Element    xpath=.//div[@id='approveBox'][@style='display: none;']//button[@id='btnApproved']
+    Page Should Contain Element    xpath=.//div[@id='approveBox'][@style='display: none;']//button[@id='btnRejected']
+    Page Should Contain Element    xpath=.//div[@id='approveBox'][@style='display: none;']//button[@id='btnForward']
+    # Step 11
+    Click Element    id=btnChangeStatus
+    Page Should Not Contain Element    xpath=.//div[@id='submitReportCont'][contains(@style,'display: block;')]//button[@id='setupExport']
+    Page Should Not Contain Element    xpath=.//div[@id='approveBox'][@style='display: none;']//button[@id='btnApproved']
+    Page Should Not Contain Element    xpath=.//div[@id='approveBox'][@style='display: none;']//button[@id='btnRejected']
+    Page Should Not Contain Element    xpath=.//div[@id='approveBox'][@style='display: none;']//button[@id='btnForward']
+
+*** Keyword ***
+Setup Integration For Owner
+    [Arguments]    ${inte_myapprover}    ${inte_nextapprover}    ${inte_bookkeeper}
+    [Documentation]    SUITE_KEY: Setup Integration for Owner: My Approver, Next Approver, Bookkeeper.
+    Click Setting Menu    settings    report    ${EMPTY}
+    Delete Connection Or Integrations By Name If Exists    Approver
+    Setup A Connection In Setting Page    Approver    ${inte_myapprover}
+    Delete Connection Or Integrations By Name If Exists    Approver2
+    Setup A Connection In Setting Page    Approver2    ${inte_nextapprover}
+    Delete Connection Or Integrations By Name If Exists    Bookkeeper
+    Setup A Connection In Setting Page    Bookkeeper    ${inte_bookkeeper}
+
+Open Yahoo Mail And Delete All Email If Exists
+    [Arguments]    ${username}    ${password}
+    [Documentation]    SUITE_KEY: Login yahoo mail and delete all email in inbox folder
+    Login Yahoo Mail    ${username}    ${password}
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[@role="gridcell"]/input
+    Run Keyword If    ${value}    Delete All Yahoo Email    ELSE    Log    Your Inbox folder is empty
+    Logout Yahoo Mail
+
+Create Report And Export To Integration
+    [Arguments]    ${report_name}    ${inte_id}    ${inte_name}
+    [Documentation]    SUITE_KEY: Create report by report name, then export to Integration.
+    ...    Ex: ${report_name}=Report_A, ${inte_id}=Approver, ${inte_name}=My Approver
+    Select Main Menu    reports    create
+    Input Text    id=ReportOutlineName    ${report_name}
+    Select Dropdown Type Div    ddl_ReportOutlineRulesOperand    Category
+    Select Dropdown Type Div    ddl_ReportOutlineRulesOperator    Is
+    Select Dropdown Type Div    ddl_ReportOutlineRulesValue    All Categories
+    Click Element    xpath=.//div[@class='ec-button btn-round-silver right']//span[contains(.,'Save')]    # Create report
+    Wait Until Page Contains Element    xpath=.//div[@id='gridReportExpenses']//div[@data-row='0']/div[@data-col='1']    7m    # Wait Expense row display
+    Click Setting Menu    settings    report    ${EMPTY}
+    Wait Until Page Contains Element    xpath=.//a[text()='Add more integrations']    ${TIMEWAIT}
+    Delete Connection Or Integrations By Name If Exists    ${inte_id}
+    Run Keyword If    '${inte_id}'=='Approver'    Setup A Connection In Setting Page    ${inte_id}    ${user_myapprover_A}
+    Run Keyword If    '${inte_id}'=='Approver2'    Setup A Connection In Setting Page    ${inte_id}    ${user_nextapprover_B}
+    Run Keyword If    '${inte_id}'=='Bookkeeper'    Setup A Connection In Setting Page    ${inte_id}    ${user_bookkeeper_C}
+    Opens An Report And Exports To Integration    ${report_name}    ${inte_name}
+
+Modifies Report Name And Clicks Save Button
+    [Arguments]    ${new_report_name}
+    [Documentation]    SUITE_KEY: Edit report name and save
+    Input Text    xpath=.//div[@id='frmReportName']/input[@id='ReportNote']    ${new_report_name}
+    Click Button    xpath=.//div[@id='frmReportName']/button[text()='Save']
+    Sleep    ${TIMESLEEP}
+    Textfield Value Should Be    xpath=.//div[@id='frmReportName']/input[@id='ReportNote']    ${new_report_name}
+
+Login Yahoo Mail And Check Report
+    [Arguments]    ${username}    ${password}    ${report_subject}    ${report_name}
+    [Documentation]    SUITE_KEY: Login yahoo mail and check report sent from approver
+    Login Yahoo Mail    ${username}    ${password}
+    Click Refresh And Wait Until Page Contains New Email    ${report_subject}
+    Click Element    xpath=.//div[@class="subj"]/span[contains(.,'${report_subject}')]
+    Wait Until Page Contains Element    xpath=.//div[contains(@class,'body')]//p/a[contains(.,'${report_name}')]    ${TIMEWAIT}
+    Verify Attachment    ${report_name}
+    Logout Yahoo Mail
+
+Click Refresh And Wait Until Page Contains New Email
+    [Arguments]    ${new_email_title}
+    [Documentation]    SUB keyword for "Login Yahoo Mail And Check Report": Keyword wait until page contail new email.
+    #: FOR    ${I}    IN RANGE    0    ${number}
+    Click Element    id=btn-checkmail
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains    ${new_email_title}    30s
+    Run Keyword If    '${value}' == 'False'    Click Refresh And Wait Until Page Contains New Email    ${new_email_title}    ELSE    Log    New email report displayed.
+
+Verify Attachment
+    [Arguments]    ${report_name}
+    [Documentation]    SUB keyword for "Login Yahoo Mail And Check Report": Check attach file exist
+    Wait Until Page Contains Element    xpath=.//div[@class='tictac-att-files-cover']//div[contains(text(),'${report_name}')]    ${TIMEWAIT}
+    Page Should Not Contain Element    xpath=.//ul[@class='tictac-att-slideshow-thumbs']
+    Click Element    xpath=.//div[@class='tictac-att-files-cover']//div[contains(text(),'${report_name}')]
+    Sleep    ${TIMEWAIT}
+    Wait Until Page Contains Element    xpath=.//ul[@class='tictac-att-slideshow-thumbs']    ${TIMEWAIT}
+    Page Should Contain Element    xpath=.//ul[@class='tictac-att-slideshow-thumbs']
+    Sleep    ${TIMESLEEP}
+    Click Element    xpath=.//div[@class='tictac-att-ss-topbar-right']/span[@title='Close']
+
+Login Yahoo Mail
+    [Arguments]    ${username}    ${password}
+    [Documentation]    SUITE_KEY: Input username & password to login yahoo mail
+    ${kw}=    Register Keyword To Run On Failure    Nothing
+    ${value}    Run Keyword And Return Status    Go To    ${url_yahoomail}
+    Run Keyword If    '${value}' == 'False'    Open Browser    ${url_yahoomail}    ${BROWSER}    remote_url=${SERVER}
+    Maximize Browser Window
+    Register Keyword To Run On Failure    ${kw}
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    id=username    ${TIMEWAIT}
+    Run Keyword If    ${value}    Input Text    id=username    ${username}    ELSE    Input Text
+    ...    id=login-username    ${username}
+    Run Keyword If    ${value}    Input Text    id=passwd    ${password}    ELSE    Input Text
+    ...    id=login-passwd    ${password}
+    #Run Keyword If    ${value}    Click Button    id=.save    / id=login-signin
+    Sleep    200ms
+    Wait Until Page Contains Element    xpath=.//div[@id='submits']/button    ${TIMEWAIT}
+    Click Button    xpath=.//div[@id='submits']/button
+    #Wait Until Page Contains Element    id=login-signin    ${TIMEWAIT}
+    #Click Button    id=login-signin
+    #Click Button    name=signin
+    Wait Until Yahoo Mail Load
+
+Wait Until Yahoo Mail Load
+    [Documentation]    SUB keyword for "Login Yahoo Mail": Wait until mail load, it take a while until new email coming
+    Sleep    ${TIMEWAIT}
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//a[contains(text(),'Continue')]
+    Run Keyword If    ${value}    Click Element    xpath=.//a[contains(text(),'Continue')]    ELSE    Log    Undisplayed page upgrade.
+    Sleep    ${TIMEWAIT}
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[@role="gridcell"]/input    ${TIMEWAIT}
+    Run Keyword If    ${value}    Log    All reports displayed.    ELSE    Wait Until Page Contains    Your Inbox folder is empty
+    ...    ${TIMEWAIT}
+
+Logout Yahoo Mail
+    [Documentation]    SUITE_KEY: Log Out yahoo mail
+    Wait Until Page Contains Element    id=yucs-profile    ${TIMEOUT}
+    #Mouse Over    xpath=.//a/*[@data-prof='Avatar']
+    Mouse Over    id=yucs-profile
+    Sleep    1s
+    ${val_tooltip_displayed}    Run Keyword And Return Status    Page Should Not Contain Element    xpath=.//div[@class='js-Tooltip-Wrapper Pos-r']/div[contains(@class,'NorthEast D-n')]
+    Run Keyword If    '${val_tooltip_displayed}' == 'False'    Logout Yahoo Mail
+    Mouse Over    link=Sign Out
+    Sleep    1s
+    Click Link    link=Sign Out
+    Wait Until Page Contains Element    xpath=.//*[text()='Mail']
+    Go To    http://mail.yahoo.com/
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    id=username    ${TIMEWAIT}
+    Run Keyword If    ${value}    Log    Login yahoo UI changed.    ELSE    Wait Until Page Contains Element    id=login-username
+    ...    ${TIMEWAIT}
+
+Delete All Yahoo Email
+    [Documentation]    SUITE_KEY: Keyword delete all yahoo mail in inbox folder
+    Click Element    id=btn-checkmail
+    Wait Until Page Contains Element    xpath=.//input[@data-action='selectAll-message']    ${TIMEOUT}
+    Select Checkbox    xpath=.//input[@data-action='selectAll-message']
+    Sleep    1s
+    Click Element    xpath=.//i[@class='icon-delete']
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[@id="modalOverlay"][contains(@style,"display: block;")]
+    Run keyword If    ${value}    Click Element    id=okModalOverlay
+    Wait Until Page Contains    Your Inbox folder is empty    ${TIMEWAIT}
+
+Verify Report Approve Displayed
+    [Documentation]    SUITE_KEY: Vefiry report approve display
+    Wait Until Page Contains Element    xpath=.//i[@class='approved'][contains(.,'Approved')]    ${TIMEOUT}
+    Page Should Contain Element    xpath=.//a[@id='btnChangeStatus'][contains(.,'Change Status')]
+    Page Should Contain Element    xpath=.//div[@id='approveBox'][@style='display: none;']//button[@id='btnApproved']
+    Page Should Contain Element    xpath=.//div[@id='approveBox'][@style='display: none;']//button[@id='btnRejected']
+    Page Should Contain Element    xpath=.//div[@id='approveBox'][@style='display: none;']//button[@id='btnForward']
+    Page Should Contain Button    id=setupExport
+    Wait Until Page Contains Element    xpath=.//div[@id='gridReportExpenses']//div[@data-row='0']/div[@data-col='1']    ${TIMEOUT}
+    Log    If failed, change text history "My Approver Test approved" OR check Manage User and add fullname
+    #Page Should Contain Element    xpath=.//div[@id='approvalHistoryCont']//li[contains(.,'My Approver Test approved')]
+    Page Should Contain Element    xpath=.//div[@id='approvalHistoryCont']//li[contains(.,'${user_myapprover_A_fullname} approved')]
+
+Login Yahoo Mail And Check Report Approved
+    [Arguments]    ${username}    ${password}    ${report_subject}    ${report_name}
+    [Documentation]    SUITE_KEY: Login yahoo mail to check report approved
+    Login Yahoo Mail    ${username}    ${password}
+    Click Refresh And Wait Until Page Contains New Email    ${report_subject}
+    Click Element    xpath=.//div[@class="subj"]/span[contains(.,'${report_subject}')]
+    Wait Until Page Contains Element    xpath=.//div[contains(@class,'body')]//p/a[contains(.,'${report_name}')]    ${TIMEWAIT}
+
+Login EC And Delete All Integration
+    [Arguments]    ${username}    ${password}
+    [Documentation]    SUITE_KEY: Login expense cloud and delete all integration
+    Log In    ${sever_test}    ${username}    ${password}
+    Click Setting Menu    settings    report    ${EMPTY}
+    #Delete Integrations By Name If Exists    Approver2
+    #Delete Integrations By Name If Exists    Bookkeeper
+    Delete All Current Connections Or Integrations

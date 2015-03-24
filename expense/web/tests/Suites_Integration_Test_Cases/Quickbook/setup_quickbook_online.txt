@@ -1,0 +1,58 @@
+*** Settings ***
+Documentation     /* Suite Setup Quickbook Integraton */
+Suite Setup       Set Server
+Test Teardown     Close All Browsers
+Resource          ../../../conf/selenium_connect.txt
+Library           Selenium2Library
+
+*** Variables ***
+
+*** Test Cases ***
+TC_Basic flow - Setup QBOE by the paid user who belongs to a company (B) - (0-sanityCheck)
+    [Documentation]    Setup Netsuite integration by individual
+    [Tags]    Smoke Testing    Setup Quickbook    Suites Integration    Completed    Not Mailinator
+    Create Bulk Expenses And Submit Unsubmited Report    1    Miscellaneous    Mobile    ${quickbookonline}
+    #>>> PRECONDITION: DELETE INTEGRATIONS IF EXISTED:
+    Click Setting Menu    settings    report    ${EMPTY}
+    Delete Connection Or Integration By Name If Exist    Qboe
+    Click Ec Link    settings    addons    ${EMPTY}
+    #>>> OUTPUT<<<: Add-Ons page displayed.
+    Element Text Should Be    xpath=.//*[@id='pageAddons']/h2    Add-Ons & Integrations
+    #--- STEP 2 ---: User clicks on Quick book online link to setup integration.
+    Wait Until Page Contains Element    xpath=.//a[@class='intuitPlatformConnectButton'][text()='Connect with QuickBooks']    ${TIMEOUT}
+    Click Element    xpath=.//a[@class='intuitPlatformConnectButton'][text()='Connect with QuickBooks']
+    Sleep    3s
+    Select Window    title=Welcome to Intuit App Center
+    Wait Until Page Contains Element    ius-userid    9s
+    Wait Until Page Contains Element    ius-password
+    Input text    name=Email    ${quickbookonline_user_id}
+    Input text    name=Password    ${quickbookonline_password}
+    Click Button    id=ius-sign-in-submit-btn
+    #Title Should Be    title=TripIt | Online travel itinerary and trip planner
+    Title Should Be    title=Welcome to Intuit App Center
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[@id='RealmSelectDiv']//big[contains(text(),"${qbo_company_name}")]    ${TIMEOUT}
+    Run Keyword If    ${value}    Select QBO Company    ${qbo_company_name}    ELSE    Log    There is no company exist.
+    Wait Until Page Contains Element    id=authorizeBtn    ${TIMEWAIT}
+    Page Should Contain Button    id=authorizeBtn
+    Page Should Contain Element    xpath=.//*[@id='grantForm']/div/small/a[contains(.,'No, Thanks')]
+    Click Button    authorizeBtn
+    #Wait Until Page Contains    TriNet Expense Intuit Anywhere Dev and QuickBooks are now connected!    ${TIMEWAIT}
+    Wait Until Page Contains    You have successfully connected TriNet Expense to your QuickBooks Company File!    ${TIMEWAIT}
+    #Select Window    title=TriNet Expense Mappings
+    Select Window    title=TriNet Expense - Mappings
+    Verify Integration Mapping Displayed
+    Click Setting Menu    settings    report    ${EMPTY}
+    #${report_name}=    Catenate    ${quickbookonline}s Online    -    ${qbo_company_name}    -    ${user_owner_fullname}
+    #Quickbooks Online - ExpenseCloud1 - ec_companyowner@yahoo.com
+    Page Should Contain    ${quickbookonline}s Online - ${qbo_company_name} - ${user_owner_fullname}
+    #>>> OUTPUT<<<: System shows link Edit, Mark Default, Delete and Integration Mapping
+    Verify A Connection Or Integration Existed    Qboe    ${user_owner}
+    Opens An Unsubmitted Report And Exports To Integration    ${quickbookonline}
+    #Title Should Be    TriNet Expense Reports
+    Title Should Be    title=TriNet Expense - Reports
+    Wait Until Page Contains    Export to QuickBooks Online
+    Select Dropdown    ddlExport_NR_To_chzn    Aptana IDE
+    Select Dropdown    ddlBankAccount_NR_chzn    Chase Manhattan Bank
+    Click Element    id=submitReportBtn
+    Verify Page Show Message    success    Exported Successfully.
+    Sleep    1s

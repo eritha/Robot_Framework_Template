@@ -1,0 +1,68 @@
+*** Settings ***
+Documentation     ExpenseCloud Login testing
+Suite Setup       Set Server
+Test Teardown     Close All Browsers
+Resource          ../../conf/selenium_connect.txt
+
+*** Variables ***
+${valid_un}       expensecloud1@gmail.com
+${initial_valid_un}    jack@app7.com
+${uregistered_un}    bob@bobbigboy.com
+${no_domain_un}    jack
+${invalid_domain_un}    jack@app7
+${sql_injection_un}    'SELECT * FROM users
+${valid_pw}       password1
+${incorrect_pw}    password
+${bad_login_msg}    Email or password are invalid
+${sql_injection_pw}    'SELECT * FROM users
+${url}            http://dev02.app7.com
+
+*** Test Cases ***
+Valid Login
+    [Documentation]    Valid Log In, User Page Displayed
+    [Tags]    ValidLogin
+    Log In    ${url}    ${initial_valid_un}    ${valid_pw}
+    Title Should Be    TriNet Expense Users
+    Element Should Contain    subNav    ${initial_valid_un}
+    Log Out
+
+Invalid Login No User Registered
+    [Documentation]    Invalid Login with no user registered with that username
+    [Tags]    InvalidLogin    NoUser
+    Invalid Login    ${url}    ${uregistered_un}    ${valid_pw}
+
+Invalid Login No Domain In UN
+    [Documentation]    Invalid Login with no domain in username
+    [Tags]    InvalidLogin    InvalidEmail
+    Invalid Login    ${url}    ${no_domain_un}    ${valid_pw}
+
+Invalid Login Invalid Domain In UN
+    [Documentation]    Invalid Login with invalid domain in username
+    [Tags]    InvalidLogin    InvalidEmail
+    Invalid Login    ${url}    ${invalid_domain_un}    ${valid_pw}
+
+Invalid Login Invalid Password
+    [Documentation]    Invalid Login with incorrect password
+    [Tags]    InvalidLogin    InvalidPassword
+    Invalid Login    ${url}    ${valid_un}    ${incorrect_pw}
+
+Invalid Login Invalid UN and Password
+    [Documentation]    Invalid Login with both incorrect UN and incorrect PW
+    [Tags]    InvalidLogin    InvalidEmail    InvalidPassword
+    Invalid Login    ${url}    ${no_domain_un}    ${incorrect_pw}
+
+Invalid Login SQL Injection UN
+    [Documentation]    Invalid Login with SQL Injection UN
+    [Tags]    InvalidLogin    SQLInjection
+    Invalid Login    ${url}    ${sql_injection_un}    ${valid_pw}
+
+Invalid Login SQL Injection PW
+    [Documentation]    Invalid Login with SQL Injection PW
+    [Tags]    InvalidLogin    SQLInjection
+    Invalid Login    ${url}    ${valid_un}    ${sql_injection_pw}
+
+*** Keywords ***
+Invalid Login
+    [Arguments]    ${url}    ${un}    ${pw}
+    Log In    ${url}    ${un}    ${pw}
+    Element Should Contain    userBoxBody    ${bad_login_msg}

@@ -1,0 +1,186 @@
+*** Settings ***
+Documentation     /* Suite Trinet Expense Test Case */
+Suite Setup       Set Server
+Test Teardown     Close All Browsers
+Resource          ../../conf/selenium_connect.txt
+Library           Selenium2Library
+
+*** Variables ***
+${expense_site}    https://www.expensecloud.com/
+${unsubmitted_expenses}    Unsubmitted Expenses
+#XPATH:
+${xpath_ec_checkbox_all}    xpath=.//*[@id='grid']/div[2]/div/div[1]/div/div[1]/span/input
+${xpath_ec_checkbox_row}    xpath=.//*[@id='grid']/div[2]/div/div[2]/div[1]/div/div[1]/input
+${xpath_ec_date_header}    xpath=.//*[@id='grid']//span[text()='Date']
+${xpath_ec_merchant_header}    xpath=.//*[@id='grid']//span[text()='Merchant']
+${xpath_ec_category_header}    xpath=.//*[@id='grid']//span[text()='Category']
+${xpath_ec_amount_header}    xpath=.//*[@id='grid']//span[text()='Amount']
+${xpath_ec_report_header}    xpath=.//*[@id='grid']//span[text()='Report']
+${xpath_ec_receipt_header}    xpath=.//*[@id='grid']//span[text()='Receipt']
+${1}              xpath=.//*[@id='grid']/div[2]/div/div[2]/div/div/div[2]
+${2}              xpath=.//*[@id='grid']/div[2]/div/div[2]/div[2]/div[6]/div/div
+#VALUES
+${value_ec_searchvalue_ads}    ads
+${value_ec_searchvalue_xyzabc}    xyzaddfsgdrsgrsgsdfgdsfgrrrsdfgbc
+${emptyspace}     ${EMPTY}
+
+*** Test Cases ***
+TC_Basic flow (B) - View active expenses list (0-sanityCheck)
+    [Documentation]    This is smoke test for active suite
+    [Tags]    Smoke Testing    Expense TC    Completed    Not Mailinator
+    #Log In    ${sever_test}    rorotrinet@gmail.com    trinetr0cks
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    #System shows the drop down contains sub-tabs Active, Submitted, Deleted. Default is Active if user clicks on Expenses tab
+    Vefiry Main Menu Expense
+    # Precondition: There is must have a Trinet Expense account have at least an active expense.
+    Delete All Current Expenses If Exists
+    Create Category Map    # Get list category into ${cat_map}
+    Create Bulk Expenses    5    Miscellaneous    Mobile    ${intacct}    ${cat_map}
+    Vefiry Expense Active Page
+    View Active Expenses List
+
+TC_Search active expenses (A1) - (1-High)
+    [Documentation]    This is test case detail
+    [Tags]    Expense TC    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Search Active Expenses
+
+TC_Filter active expenses by account (A2) - (1-High)
+    [Documentation]    This is test case detail
+    [Tags]    Expense TC    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Filter Active Expenses By Account
+    Log Out Expense Cloud
+
+TC_Delete expenses (A3) - (1-High)
+    [Documentation]    This is test case detail
+    [Tags]    Expense TC    Completed    Not Mailinator
+    # Precondition: There is must have a Trinet Expense account have at least an active expense.
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Delete All Current Expenses If Exists
+    Create Category Map    # Get list category into ${cat_map}
+    Create Bulk Expenses    5    Miscellaneous    Mobile    ${intacct}    ${cat_map}
+    Delete Some Of Expenses
+    Log Out Expense Cloud
+
+TC_Active expenses list is empty (A4) - (2-Medium)
+    [Documentation]    This is test case detail
+    [Tags]    Expense TC    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Delete All Current Expenses If Exists
+    Active expenses list is empty
+    Log Out Expense Cloud
+
+*** Keywords ***
+Vefiry Main Menu Expense
+    [Documentation]    SUITE_KEY: Verify main menu expense
+    Page Should Contain Link    link=Expenses    # Verify parent menu 'Expense'
+    Mouse Over    xpath=.//a[text()='Expenses']    # Hover parent menu 'Expense'
+    Page Should Contain Link    link=Active    # Verify child menu 'Active' or parent 'Expense'
+    Page Should Contain Link    link=Submitted    # Verify child menu 'Submitted' or parent 'Expense'
+    Page Should Contain Link    link=Deleted    # Verify child menu 'Deleted' or parent 'Expense'
+
+Vefiry Expense Active Page
+    [Documentation]    SUITE_KEY: Verify all element in expense active page
+    Page Should Contain Element    id=btnAddExpense    # Verify button add expense
+    Page Should Contain Link    link=Import From CSV    # Verify link import CSV
+    Page Should Contain Element    id=btnCreateReport    # Verify btn create report
+    Page Should Contain Element    id=btnDeleteExpense    # Verify button delete expense
+    Page Should Contain Element    id=btnEditSelectedExpenses    # Verify button edit expense
+    Page Should Contain Element    ${xpath_ec_checkbox_all}    # Verify checkbox select all expenses
+    Verify Item In Expense Row
+
+Verify Item In Expense Row
+    [Documentation]    SUITE_KEY: Verify all element expense table
+    ...    Sub keyword for "Vefiry Expense Active Page".
+    Page Should Contain Element    ${xpath_ec_checkbox_row}    # Verify checkbox in expense row
+    Page Should Contain Element    ${xpath_ec_date_header}    # Verify date in expense row
+    Page Should Contain Element    ${xpath_ec_merchant_header}    # Verify merchant in expense row
+    Page Should Contain Element    ${xpath_ec_category_header}    # Verify category in expense row
+    Page Should Contain Element    ${xpath_ec_amount_header}    # Verify amount in expense row
+    Page Should Contain Element    ${xpath_ec_report_header}    # Verify report in expense row
+    Page Should Contain Element    ${xpath_ec_receipt_header}    # Verify receipt in expense row
+
+View Active Expenses List
+    [Documentation]    SUITE_KEY: Verify page can sort list expense by Date, Merchant, Amount, Report and show number of expenses
+    Click Element    ${xpath_ec_date_header}
+    Sleep    3s
+    Page Should Contain Element    xpath=.//div[contains(@class,'sortable')]/span[text()='Date']    # Verify field Date can sortable
+    Click Element    ${xpath_ec_merchant_header}
+    Sleep    3s
+    Page Should Contain Element    xpath=.//div[contains(@class,'sortable')]/span[text()='Merchant']    # Verify field Merchant can sortable
+    Click Element    ${xpath_ec_amount_header}
+    Sleep    3s
+    Page Should Contain Element    xpath=.//div[contains(@class,'sortable')]/span[text()='Amount']    # Verify field Amount can sortable
+    Click Element    ${xpath_ec_report_header}
+    Sleep    3s
+    Page Should Contain Element    xpath=.//div[contains(@class,'sortable')]/span[text()='Report']    # Verify field Report can sortable
+    Click Element    link=25    # Click link filter 25 rows
+    Sleep    2s
+    Click Element    link=50    # Click link filter 50 rows
+    Sleep    3s
+    Click Element    link=100    # Click link filter 100 rows
+    Sleep    2s
+    Click Element    ${1}    # Select to edit a row
+    Sleep    1s
+    Click Element    css=div.select_editor_button    # Select dropdown category
+    Sleep    1s
+    Click Element    css=input.amount_editor    # Click textbox amount
+    Sleep    1s
+    Click Element    ${2}    # Select dropdown report
+    Sleep    1s
+
+Search Active Expenses
+    [Documentation]    SUITE_KEY: Search some active expense
+    Select Main Menu    expenses    active
+    Wait Until Expense Active Page Load
+    Click Element    id=btnToggleSearch    # Click button to show search form
+    Sleep    2s
+    Input Text    searchValue    ${value_ec_searchvalue_ads}    # Input values to seach expense
+    Click Element    css=button.image-button.btn-search    # Click btn seach
+    Sleep    2s
+    Input Text    id=searchValue    ${value_ec_searchvalue_xyzabc}    # Input another values
+    Click Element    css=button.image-button.btn-search    # Click btn seach
+    Sleep    2s
+    Input Text    id=searchValue    ${emptyspace}    # Input empty value
+    Click Element    css=button.image-button.btn-search    # Click btn seach
+    Sleep    2s
+    Click Element    id=btnToggleSearch    # Close seach form
+    Sleep    2s
+
+Filter Active Expenses By Account
+    [Documentation]    SUITE_KEY: Filter expense active
+    Select Main Menu    expenses    active
+    Wait Until Expense Active Page Load
+    #All Accounts drop down - All Accounts selected
+    #All Accounts
+    Select Dropdown    accountFilter_chzn    All Accounts
+    Sleep    2s
+    #Credit Cards
+    Select Dropdown    accountFilter_chzn    Credit Cards
+    Sleep    2s
+    #Cash
+    Select Dropdown    accountFilter_chzn    Cash
+    Sleep    2s
+    #Cash CSV
+    Select Dropdown    accountFilter_chzn    Cash CSV
+    Sleep    2s
+    #Credit CSV
+    Select Dropdown    accountFilter_chzn    Credit CSV
+    Sleep    2s
+
+Delete Some Of Expenses
+    [Documentation]    SUITE_KEY: Delete some active expenses
+    Sleep    1s
+    Click Element    css=input.cb_cell_formatter
+    Sleep    1s
+    Click Element    id=btnDeleteExpense
+    Sleep    1s
+    Click Element    css=input.cb_cell_formatter
+    Sleep    1s
+    Click Element    id=btnDeleteExpense
+    Sleep    1s
+
+Active expenses list is empty
+    [Documentation]    SUITE_KEY: Verify expense list is empty
+    Wait Until Page Contains    No Expenses    ${TIMEOUT}

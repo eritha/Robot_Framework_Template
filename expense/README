@@ -1,0 +1,26 @@
+This will be the area where I start to build out our test cases, libraries, and config
+files for our new testing framework, Robot Framework.
+PARENT FOLDER:
+mobile/:  Contain all data test for testing product on some of devices (Iphone, Android, Windows Phone) 
+web/:  Contain all data test for testing product on web (Test cases, data test, scenarios ), config files, common libraries, python libraries.
+
+SUB FOLDER:
+Sub folder in parent 'web/':
+conf/:
+	There are contain variables, keywords global for project.
+	Configuration files for the different areas. These will include URLs, log-in credentials, 
+	and any other configurations needed for the test areas.
+
+lib/:  
+	This will contain the general library files for dealing with testing. The general variables for all test suites.
+	Right now I imagine	a connections library, the Robot Framework Selenium library, 
+	and other general library that is not specific to a set of tests.
+	
+js/:  
+	There are contain JavaScript files, support some test cases for some cases special.	
+
+test/:  
+	This will contain all test suite of project, sub folder for each future.
+	The libraries related to each of the testing areas, features or test suite: Expense, report, integration, setup, etc.
+	This will be very specific for handling of those particular test areas
+	everything else should go in lib/.

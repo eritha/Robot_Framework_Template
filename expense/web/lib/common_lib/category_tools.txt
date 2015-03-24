@@ -1,0 +1,58 @@
+*** Settings ***
+Documentation     /* LIST KEYWORD REUSE FOR CATEGORY */
+Library           ../py_lib/cat_mapper.py    # These are methods, written in RF, to map and change categories.
+Library           Collections
+
+*** Variables ***
+${cat_parent_base}    //*[@id="categoryDropdown"]/li[parent_id]/a
+${cat_child_base}    /ul/li[child_id]/a
+
+*** Keywords ***
+Return Random Category
+    [Documentation]    JACK_KEY: Not use yet
+    ${category_map}
+    ${random}    Evaluate    random.randint(0, len(${category_map}))
+
+Choose Child Or Parent Category
+    [Arguments]    ${parent_path}    ${child_num}
+    [Documentation]    (JACK_KEY: Not use yet)
+    ...    Chooses whether to select child or parent of a Category with children
+    ${child_random}    Evaluate    random.randint(0, ${child_num})    random
+    ${child_random_to_string}    Convert To String    ${child_random}
+    Run Keyword Unless    '${child_random_to_string}' == '0'    Choose Child    ${parent_path}    ${child_random_to_string}
+    Run Keyword If    '${child_random_to_string}' == '0'    Click Element    xpath=${parent_path}
+
+Choose Child
+    [Arguments]    ${parent_path}    ${child_num_string}
+    [Documentation]    COMMON_KEY: Chooses applicable child category based on xpath
+    ${child}    Replace String    ${child_base}    child_id    ${child_random_to_string}
+    ${child_path}    Replace String    ${parent_path}    \/a    ${child}
+    Mouse Over    ${parent_path}
+    Click Element    xpath=${child_path}
+
+Populate Time
+    [Arguments]    ${parent_path}
+    [Documentation]    COMMON_KEY: Add Client & Project when create expense with random values "Category = Time"
+    ${random_string}    Generate Random String
+    Input Text    css=#client ${random_string}    # Input client field
+    ${random_string}    Generate Random String
+    Input Text    css=#project    ${random_string}    # Input project field
+    ${random_hh}    Evaluate    random.randint(0, 99)    random
+    ${random_min}    Evaluate    random.randint(0, 59)    random
+    ${time}    Catenate    SEPARATOR=:    ${random_hh}    ${random_min}
+    Input Text    css=#grid > div.lhv-table-body.viewport > div > div.lhv-tbody.viewport > div.lhv-tr.bg-editor.lhv-table-editor > div.lhv-td.c4.cell_amount.td-right > div > inputinput    ${time}    # Input amount field
+
+Create Category Map
+    [Documentation]    COMMON_KEY: Generate a number of parent categories and a map of parent and children categories based on how they appear on the Active Expenses page. Sets mapping as Suite Level Variable.
+    ${value}    Run Keyword and Return Status    Page Should Contain Element    id=btnAddExpense
+    Run Keyword If    '${value}' == 'False'    Set Suite Variable For Report Page    gridReportExpenses    id=btnAddNewExpense    ELSE    Set Suite Variable For Report Page
+    ...    grid    id=btnAddExpense    # Set ID gird & ID button for active expense list or report expense list
+    ${value}    Run Keyword and Return Status    Page Should Not Contain Element    xpath=.//div[@class="lhv-tr bg-editor lhv-table-editor"][contains(@style,"display: block;")]
+    Run Keyword If    ${value}    Click Element    ${idbtn_add_expense}
+    ${categories}    Execute JavaScript    ${CURDIR}/../../JS/category_mapper.js    # Run JS file to get list category
+    LOG    ${categories}
+    ${categories_length}    Get Length    ${categories}
+    Run Keyword If    ${categories_length} == 0    Fatal Error    Categories not populated. Length is ${categories_length}
+    ${cat_map}    Process Parent Child List    ${categories}
+    Set Suite Variable    ${cat_map}
+    Log    ${cat_map}

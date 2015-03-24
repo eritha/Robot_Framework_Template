@@ -1,0 +1,222 @@
+*** Settings ***
+Documentation     /* COMMON KEY for Suite Report Test Cases */
+Resource          ../../conf/selenium_connect.txt
+Library           Selenium2Library    #${link_dashboard}    /users/dashboard
+
+*** Keyword ***
+Add More Filter
+    [Documentation]    COMMON_KEY: Click add filter
+    Click Button    xpath=.//li[@id='1']//button[contains(.,'Add')]
+
+Remover Filter
+    [Documentation]    COMMON_KEY: Click remover filter
+    Click Button    xpath=.//ul[@id='groupRulesWrapper']/li[2]//button[contains(.,'Remove')]
+
+Create Report With Input Report Name
+    [Arguments]    ${report_name}    ${date_range}    ${rule_type}    ${rules_operand}    ${rules_operator}    ${rules_value}
+    [Documentation]    COMMON_KEY: Create an report with input report name.
+    ...    Precondition: There must have expense not submit to nay reports.
+    Select Main Menu    reports    create
+    Input Report Values    ${report_name}    ${date_range}    ${rule_type}    ${rules_operand}    ${rules_operator}    ${rules_value}
+    Click Element    xpath=.//div[@class='ec-button btn-round-silver right']//span[contains(.,'Save')]
+
+Input Report Values
+    [Arguments]    ${report_name}    ${date_range}    ${rule_type}    ${rules_operand}    ${rules_operator}    ${rules_value}
+    [Documentation]    COMMON_KEY: Input report name and select filter report
+    Input Text    id=ReportOutlineName    ${report_name}
+    # Select Date Range: This month / Last month / ...
+    Run Keyword If    '${date_range}' == '${EMPTY}'    Log    Date Range not selected.    ELSE    Select Date Range    ${date_range}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    # Select Rule Type: All / Any
+    Run Keyword If    '${rule_type}' == '${EMPTY}'    Log    Rule Type not selected.    ELSE    Select Dropdown Type Div    ddl_ReportOutlineRuleType
+    ...    ${rule_type}
+    # Select Rules Operand    : Category / Category / Client / ...
+    Run Keyword If    '${rules_operand}' == '${EMPTY}'    Log    Rules Operand not selected.    ELSE    Select Dropdown Type Div    ddl_ReportOutlineRulesOperand
+    ...    ${rules_operand}
+    # Select Rules Operator    : Is / Is Not
+    Run Keyword If    '${rules_operator}' == '${EMPTY}'    Log    Rules Operator not selected.    ELSE    Select Dropdown Type Div    ddl_ReportOutlineRulesOperator
+    ...    ${rules_operator}
+    # Select Rules Value    : All Categories / Hotels / Meals / ...
+    Run Keyword If    '${rules_value}' == '${EMPTY}'    Log    Rules Value not selected.    ELSE    Select Dropdown Type Div    ddl_ReportOutlineRulesValue
+    ...    ${rules_value}
+
+Select Date Range
+    [Arguments]    ${date_range_val}    ${start_date_on_time_val}    ${end_date_on_time_val}    ${tripSelect_val}
+    [Documentation]    COMMON_KEY: Select date range
+    Select Dropdown Type Div    ddl_ReportOutlineDateRange    ${date_range_value}
+    Run Keyword If    '${date_range_val.capitalize()}' == 'Choose custom dates'    Input Custom Dates    ${start_date_on_time_val}    ${end_date_on_time_val}    ELSE IF    '${date_range_val.capitalize()}' == 'Choose a trip'
+    ...    Select From List    id=tripSelect    ${tripSelect_val}    ELSE    Log    Value input not correct format.
+    ...    warn
+
+Input Custom Dates
+    [Arguments]    ${start_date_on_time_val}    ${end_date_on_time_val}
+    [Documentation]    COMMON_KEY: Input custom dates when select date range
+    Input Text    id=start_date_on_time    ${start_date_on_time_val}
+    Input Text    id=end_date_on_time    ${end_date_on_time_val}
+
+Synces Integration Data
+    [Arguments]    ${inte_name}    ${company_id}    ${user_fullname}    ${message_sync_metadata}    ${message_sync_em_vendor}
+    [Documentation]    COMMON_KEY: Sync data for Intacct, Netsuite
+    # Click Ec Link    mappings    integration    ${EMPTY}
+    # Wait Until Page Load    No Integration mapping
+    ${value}    Run Keyword And Return Status    Dropdown Should Contain Connection Or Integration    Integration_chzn    ${inte_name} - ${company_id} - ${user_fullname}
+    Run Keyword If    '${value}' == 'False'    Select Dropdown    Integration_chzn    ${inte_name} - ${company_id} - ${user_fullname}
+    Wait Until Page Contains Element    xpath=.//div[@class="lhv-tbody viewport"]    ${TIMEOUT}
+    Click Button    id=syncMetadata
+    Sleep    ${TIMESLEEP}    # Lazy load
+    #Wait Until Page Sync Successful    ${message_sync_metadata}    ${message_sync_em_vendor}
+    Wait Data Sync Successful    ${message_sync_metadata}
+
+Wait Data Sync Successful
+    [Arguments]    ${message_sync_metadata}
+    [Documentation]    COMMON_KEY: Verirfy sync data successful for Intacct, Netsuite
+    Wait Until Page Contains Element    id=background_msg_board_refresh    ${TIMEWAIT}
+    Click Element    id=background_msg_board_refresh
+    Sleep    ${TIMESLEEP}    # Lazy load
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[@id='background_msg_board_list']//span[@class='bg_prog_status Completed']    ${TIMEMAX}
+    Run keyword If    '${value}' == 'False'    Wait Data Sync Successful    ${message_sync_metadata}    ELSE    Log    Integration Sync Successfull.
+
+Wait Until Page Sync Successful AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+    [Arguments]    ${message_sync_metadata}    ${message_sync_em_vendor}
+    [Documentation]    MAYBE NOT USE: Verirfy sync data successful for Intacct, Netsuite
+    # SYNC METADATA
+    Wait Data Sync Successful    1    ${message_sync_metadata}
+    # SYNC EMPLOYEES & VENDOR
+    Run keyword If    "${message_sync_em_vendor}" == "${EMPTY}"    Log    Employees & Vendor not sync.    ELSE    Wait Data Sync Successful    2
+    ...    ${message_sync_em_vendor}
+
+Wait Data Sync Successful AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+    [Arguments]    ${div_number_contain_message}    ${message_sync}
+    [Documentation]    MAYBE NOT USE: Verirfy sync data successful for Intacct, Netsuite
+    Wait Until Page Contains Element    id=background_msg_board_refresh    ${TIMEWAIT}
+    Click Element    id=background_msg_board_refresh
+    Sleep    ${TIMESLEEP}
+    Wait Until Page Contains    ${message_sync}    ${TIMEWAIT}
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[@id='background_msg_board_list']/div[${div_number_contain_message}]/span[@class='bg_prog_status Completed']    ${TIMEMAX}
+    Run keyword If    ${value}    Click Element    id=background_msg_board_refresh_text    ELSE    Wait Data Sync Successful    ${div_number_contain_message}
+    ...    ${message_sync}
+
+Wait Employees And Vendor Sync Successful
+    [Arguments]    ${message_sync_em_vendor}
+    [Documentation]    COMMON_KEY: Verirfy sync data successful for Intacct, Netsuite
+    Wait Until Page Contains Element    id=background_msg_board_refresh    ${TIMEWAIT}
+    Click Element    id=background_msg_board_refresh
+    Sleep    ${TIMESLEEP}
+    Wait Until Page Contains    ${message_sync_em_vendor}    ${TIMEWAIT}
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[@id='background_msg_board_list']/div[2]/span[@class='bg_prog_status Completed']    ${TIMEMAX}
+    Run keyword If    ${value}    Click Element    id=background_msg_board_refresh_text    ELSE    Wait Employees And Vendor Sync Successful    ${message_sync_em_vendor}
+
+Select Category To Mapping
+    [Arguments]    ${ec_category}    ${inte_category}
+    [Documentation]    COMMON_KEY: Select a category to mapping for Intacct, Netsuite
+    #.//div[@id='grid']//div[@data-col='0'][contains(text(),'Mileage')]
+    Click Element    xpath=.//div[@id='grid']//div[@data-col='0'][contains(text(),'${ec_category}')]
+    Input Category Mapping    ${inte_category}
+    Click Element    xpath=.//a[text()='Save']
+
+Input Category Mapping
+    [Arguments]    ${inte_category}
+    [Documentation]    COMMON_KEY: Input category mapping
+    Click And Wait Until Page Contains Element    xpath=.//div[contains(@class,'c1')]/div[@class='editor_cont']    xpath=.//div[contains(@style,'display: block;')]/input[contains(@class,'se-suggest-search')]
+    Input Text    xpath=.//div[contains(@style,'display: block;')]/input[contains(@class,'se-suggest-search')]    ${inte_category}
+    Sleep    500ms
+    Page Should Contain Element    xpath=.//div[contains(@style,'display: block;')]//li/strong[text()='${inte_category}']
+    Click Element    xpath=.//div[contains(@style,'display: block;')]//li[@data-name='${inte_category}']
+
+Click And Wait Until Page Contains Element
+    [Arguments]    ${locator_click}    ${locator_wait}
+    [Documentation]    COMMON_KEY: Click and wait until page contains suggess search element
+    Click Element    ${locator_click}
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    ${locator_wait}
+    Run keyword If    ${value}    Log    Element displayed.    ELSE    Click And Wait Until Page Contains Element    ${locator_click}
+    ...    ${locator_wait}
+
+Login EC And Verify Report Detail
+    [Arguments]    ${username}    ${password}    ${report_name}    ${report_name_new}    ${alert_message}    ${approve_date}
+    ...    ${report_status}
+    [Documentation]    COMMON_KEY: Login expense cloud to verify report detail
+    ${kw}=    Register Keyword To Run On Failure    Nothing
+    ${value}    Run Keyword And Return Status    Select Window    title=TriNet Expense Users Login
+    Run Keyword If    '${value}' == 'False'    Log In    ${sever_test}    ${username}    ${password}
+    Register Keyword To Run On Failure    ${kw}
+    Log    ${alert_message}
+    Log    ${approve_date}
+    Reload Page And Wait Until Dashboard Page Contains    ${alert_message}    ${approve_date}
+    Click Element    xpath=.//a[text()='${alert_message}']
+    Wait Until Page Contains Element    xpath=.//i[contains(.,'${user_owner_fullname}')]    ${TIMEOUT}    # Verify Report Sender
+    Page Should Contain Element    xpath=.//h3[contains(.,'${report_name_new}')]    # Verify Report Name (edited)
+    Page Should Contain Element    xpath=.//i[@class='${report_status.lower()}'][contains(.,'${report_status}')]    # Verify Report Status: Pending / Approved
+    ${report_date}=    Evaluate    time.strftime("%Y-%m-%d", time.localtime())    time
+    Page Should Contain Element    xpath=.//i[contains(.,'${report_date}')]    # Verify Report Submitted Date
+    Page Should Contain Element    id=approvalNote    # Verify Textfield 'Notes:'.
+    Page Should Contain Button    id=btnApproved    # Verify Report button Approve, Reject, and Forward buttons
+    Page Should Contain Button    id=btnRejected
+    Page Should Contain Button    id=btnForward
+    Page Should Contain Element    id=gridReportExpenses    # Verify Report content.
+
+Reload Page And Wait Until Dashboard Page Contains
+    [Arguments]    ${alert_message}    ${approve_date}
+    [Documentation]    COMMON_KEY: Click refresh dashboard page to verify arlet message and date approve.
+    ...    Ex: An expense report for vntestexpense@yahoo.com is ready to be reviewed | 2014-07-30
+    Reload Page
+    #Click Link    /users/dashboard
+    ${value}    Run Keyword And Return Status    Verify Alert Message Dashboard Page    ${alert_message}    ${approve_date}
+    Run Keyword If    '${value}' == 'False'    Reload Page And Wait Until Dashboard Page Contains    ${alert_message}    ${approve_date}    ELSE    Log
+    ...    Alert message and date approve are displayed.
+
+Verify Alert Message Dashboard Page
+    [Arguments]    ${alert_message}    ${approve_date}
+    [Documentation]    COMMON_KEY: Verify arlet message and date approve.
+    ...    Ex: An expense report for vntestexpense@yahoo.com is ready to be reviewed | 2014-07-30
+    Wait Until Page Contains    ${alert_message}    ${TIMEOUT}
+    Wait Until Page Contains Element    xpath=.//span[contains(text(),'${approve_date}')]    ${TIMEWAIT}
+
+Verify Report Approve Displayed
+    [Documentation]    SUITE_KEY: Vefiry report approve display status Approved / btnApproved / btnRejected / btnForward
+    Wait Until Page Contains Element    xpath=.//i[@class='approved'][contains(.,'Approved')]    ${TIMEOUT}
+    Page Should Contain Element    xpath=.//a[@id='btnChangeStatus'][contains(.,'Change Status')]
+    Page Should Contain Element    xpath=.//div[@id='approveBox'][@style='display: none;']//button[@id='btnApproved']
+    Page Should Contain Element    xpath=.//div[@id='approveBox'][@style='display: none;']//button[@id='btnRejected']
+    Page Should Contain Element    xpath=.//div[@id='approveBox'][@style='display: none;']//button[@id='btnForward']
+    Page Should Contain Button    id=setupExport
+    Wait Until Page Contains Element    xpath=.//div[@id='gridReportExpenses']//div[@data-row='0']/div[@data-col='1']    ${TIMEOUT}
+    Page Should Contain Element    xpath=.//div[@id='approvalHistoryCont']//li[contains(.,'My Approver Test approved')]
+
+Remove All Dashboard Alerts
+    [Documentation]    COMMON_KEY: Check request completed & alert in dashboard, if exist, delete all reuquest complted & alerts dashboard
+    Remove All Request Completed
+    Remove All Report Activity
+
+Remove All Request Completed
+    [Documentation]    COMMON_KEY: Remove all request complete in Dashboard page
+    ${value_request_completed}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[@id='background_msg_board']//a[@id='background_msg_board_refresh']
+    Run Keyword If    ${value_request_completed}    Click Element    id=background_msg_board_refresh
+    #${value_btnrefresh}    Run Keyword And Return Status    Page Should Not Contain Element    xpath=.//div[@id='background_msg_board'][@style='display: none;']/div[@id='background_msg_board_list']    # Check btn refresh exist
+    #${value_request_completed}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[@id='background_msg_board']/div[@id='background_msg_board_list']//span[@class='bg_prog_status Completed']    # Check request completed
+    #Run Keyword If    ${value_btnrefresh} and ${value_request_completed}    Click Element    xpath=.//div[@id='background_msg_board']/div[@id='background_msg_board_list']//span[@class='bg_prog_status Completed']/following-sibling::a/span[@class='btn-close']
+    #${value_btnrefresh_1}    Run Keyword And Return Status    Page Should Not Contain Element    xpath=.//div[@id='background_msg_board'][@style='display: none;']/div[@id='background_msg_board_list']    # Check btn refresh exist
+    #${value_request_completed_1}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[@id='background_msg_board']/div[@id='background_msg_board_list']//span[@class='bg_prog_status Completed']
+    #Run Keyword If    ${value_btnrefresh_1} and ${value_request_completed_1}    Remove All Dashboard Alerts    ELSE    Log    All request completed has been removed
+
+Remove All Report Activity
+    [Documentation]    COMMON_KEY: Remove all report activity in Dashboard page
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//ul[@id='listReportActivity']//a[@class='removeAlert']    ${TIMEWAIT}
+    Run Keyword If    ${value}    Click Element    xpath=.//ul[@id='listReportActivity']//a[@class='removeAlert']
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//ul[@id='listReportActivity']//a[@class='removeAlert']
+    Run Keyword If    ${value}    Remove All Dashboard Alerts    ELSE    Log    All alerts message has been removed
+
+Verify Expense Can't Be Edited
+    [Arguments]    ${ec_name}
+    [Documentation]    COMMON_KEY: Verify expense can't be edited in report detail
+    Wait Until Page Contains    ${ec_name}    ${TIMEWAIT}
+    Select Expense By Name    ${ec_name}
+    Click Element    id=cancelViewTranButton
+    Select Expense By Name    ${ec_name}
+    Page Should Contain Element    xpath=.//div[@class='grid']//div[@id='viewDetailsPanel'][contains(@style,'display: block;')]
+    Click Element    id=cancelViewTranButton
+
+Select Expense By Name
+    [Arguments]    ${ec_name}
+    [Documentation]    COMMON_KEY: Select expense row by merchant name
+    Sleep    1s
+    Click Element    xpath=.//div[@id='gridReportExpenses']//div[contains(@class,'c1')][contains(.,'${ec_name}')]

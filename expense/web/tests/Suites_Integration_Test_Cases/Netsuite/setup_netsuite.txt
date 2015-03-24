@@ -1,0 +1,998 @@
+*** Settings ***
+Documentation     /* Suite Setup Netsuite Integraton */
+Suite Setup       Set Server
+Test Teardown     Close All Browsers
+Resource          ../../../conf/selenium_connect.txt
+Library           Selenium2Library
+
+*** Variables ***
+
+*** Test Cases ***
+TCA0_Basic flow - Setup Netsuite by the paid user who belongs to a company (B) - (0-sanityCheck)
+    [Documentation]    Basic flow
+    [Tags]    Smoke Testing    Setup Netsuite    Suites Integration    Completed    Not Mailinator
+    Create Bulk Expenses And Submit Unsubmited Report    2    Miscellaneous    Mobile    ${netsuite}
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Click Setting Menu    settings    report    ${EMPTY}
+    ${report_name}=    Catenate    ${netsuite} -    ${netsuite_account_id}    -    ${user_owner_fullname}
+    #>>> OUTPUT<<<: Show string text (The string text join: "Netsuite" - AccountID - Username user).
+    Page Should Contain    ${report_name}
+    #>>> OUTPUT<<<: System shows link Edit, Mark Default, Delete and Integration Mapping
+    Verify A Connection Or Integration Existed    ${netsuite}    ${user_owner}
+    Opens An Unsubmitted Report And Exports To Integration    ${netsuite}
+    Verify Message Export To Integration    Exported Successfully.
+
+TCA1_Setup Netsuite by an individual (A1) - (1-High)
+    [Documentation]    Setup Netsuite by an individual
+    [Tags]    Setup Netsuite    Suites Integration    Completed    Not Mailinator
+    Create Bulk Expenses And Submit Unsubmited Report    2    Miscellaneous    Mobile    ${netsuite}
+    Delete And Access Integration Submit Form    ${netsuite}
+    Select Checkbox Submit Form    ${netsuite}    Uncheck    Check    Check    Check    Check
+    ...    Check    ${EMPTY}    ${EMPTY}    Unselect    Select
+    #Select Dropdown    netsuiteSync_chzn    All    # Remover on dev02, will remover on dev01
+    #Check Add Stage For Submit Form If Not Exist    Customer    # Remover on dev02, will remover on dev01
+    #Check Add Stage For Submit Form If Not Exist    Lead    # Remover on dev02, will remover on dev01
+    #Check Add Stage For Submit Form If Not Exist    Prospect    # Remover on dev02, will remover on dev01
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Click Setting Menu    settings    report    ${EMPTY}
+    Page Should Contain    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Verify A Connection Or Integration Existed    ${netsuite}    ${user_owner}
+    Opens An Report With Report Type    Unsubmitted Reports
+    Dropdown Should Contain Connection Or Integration    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+
+TCA2_Submit Report Directly Without Policies Validation is checked (A2) - (1-High)
+    [Documentation]    Submit Report Directly Without Policies Validation is checked
+    [Tags]    Setup Netsuite    Suites Integration    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    # Set basic policies for expense
+    Set Basic Company Policies    30    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    # Setup netsuite with "Submit Report Directly Without Policies Validation" is checked.
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Click Element    xpath=.//div[@id="${netsuite}Integration"]//span[text()='Close']
+    Select Main Menu    expenses    active
+    Wait Until Expense Active Page Load
+    # Create an expense policy violation, an expense in policy violation
+    Delete All Current Expenses If Exists
+    Create Expense And Input Basic Values    ${EMPTY}    New expense with checked Policies    hotels    ${EMPTY}    120    ${EMPTY}
+    Create Expense And Input Basic Values    ${EMPTY}    New expense with correct Policies    meals    ${EMPTY}    18    ${EMPTY}
+    Submit Report All Curent Expense
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Click Button    id=submitExport
+    Verify Message Export To Integration    Exported Successfully.
+    Page Should Contain    Expense Policy Violations
+    Page Should Contain    1. Receipt required for amounts over $30.
+    Set Basic Company Policies    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    Wait Until Page Contains    Saved successfully.    ${TIMEWAIT}
+
+TCA3_Submit Report Directly Without Policies Validation is unchecked (A3) - (1-High)
+    [Documentation]    Submit Report Directly Without Policies Validation is unchecked
+    [Tags]    Setup Netsuite    Suites Integration    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    # Set basic policies for expense
+    Set Basic Company Policies    30    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    # Setup netsuite with "Submit Report Directly Without Policies Validation" is Unchecked.
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Select Checkbox Submit Form    ${netsuite}    Uncheck    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    Click Element    xpath=.//*[@id='${netsuite}Integration']//button[contains(.,"Save")]
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Click Element    xpath=.//div[@id="${netsuite}Integration"]//span[text()='Close']
+    Select Main Menu    expenses    active
+    Wait Until Expense Active Page Load
+    # Create an expense policy violation, an expense in policy violation
+    Delete All Current Expenses If Exists
+    Create Expense And Input Basic Values    ${EMPTY}    New expense with checked Policies    hotels    ${EMPTY}    120    ${EMPTY}
+    Create Expense And Input Basic Values    ${EMPTY}    New expense with correct Policies    meals    ${EMPTY}    18    ${EMPTY}
+    Submit Report All Curent Expense
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Click Button    id=submitExport
+    Verify Warning Dialog Box Show    Your report contains an expense policy violation. Would you like to correct the error or submit the report as is with an explanation?
+    Click Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//div[@id='btnSubmitViolationReport']    # Click Submit button
+    #Log    Bug: Not fix on dev01    warn
+    Verify Message Export To Integration    Exported Successfully.
+    Set Basic Company Policies    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    Wait Until Page Contains    Saved successfully.    ${TIMEWAIT}
+
+TCA3_Import Netsuite clients-projects is checked (A3) - (1-High)
+    [Documentation]    Import Netsuite clients-projects is checked
+    [Tags]    Setup Netsuite    Suites Integration    Completed    Not Mailinator
+    Create Bulk Expenses And Submit Unsubmited Report    2    Miscellaneous    Mobile    ${netsuite}
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    id=background_msg_board_refresh_text
+    Run keyword If    ${value}    Click Element    id=background_msg_board_refresh_text    ELSE    Log    Page not contain background message.
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Click Element    xpath=.//div[@id="${netsuite}Integration"]//span[text()='Close']
+    Click Ec Link    settings    client_project    ${EMPTY}
+    Dropdown Should Contain Connection Or Integration    Integration_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Sync Metadata    ${netsuite}    ${netsuite_account_id}    ${user_owner}
+    Wait Until Sync Metadata Successful    ${netsuite}'s client project data (${netsuite_account_id}) is syncing
+    Select Main Menu    expenses    active
+    Wait Until Expense Active Page Load
+    Select Expense Grid Row    0
+    Verify Auto Complete Field Show In Expense Active Page    id=project    Podolski    ${netsuite}
+    Verify Auto Complete Field Show In Expense Active Page    id=client    Zibura    ${netsuite}
+    Click Ec Link    reports    user    ${EMPTY}
+    Wait Until Report Page Load
+    Select Report Grid Row    0
+    Wait Until Report Detail Page Load
+    Select Expense Grid Row    0
+    Verify Auto Complete Field Show In Report Detail Page    id=project    Podolski    ${netsuite}
+    Verify Auto Complete Field Show In Report Detail Page    id=client    Zibura    ${netsuite}
+
+IGNORED TC_Import Netsuite clients-projects is unchecked (A4) - (1-High)
+    [Documentation]    Import Netsuite clients-projects is unchecked
+    ...    Ignore due to bug: https://trinet.atlassian.net/browse/ECDEV-4486 ( Can not delete intergration in EC page)
+    [Tags]    Setup Netsuite    Suites Integration    Ignored
+    Create Bulk Expenses And Submit Unsubmited Report    2    Miscellaneous    Mobile    ${netsuite}
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    id=background_msg_board_refresh_text
+    Run keyword If    ${value}    Click Element    id=background_msg_board_refresh_text    ELSE    Log    Page not contain background message.
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Select Checkbox Submit Form    ${netsuite}    ${EMPTY}    Uncheck    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    Click Element    xpath=.//*[@id='${netsuite}Integration']//button[contains(.,"Save")]
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Click Element    xpath=.//div[@id="${netsuite}Integration"]//span[text()='Close']
+    Click Ec Link    settings    client_project    ${EMPTY}
+    Dropdown Should Not Contain Connection Or Integration    Integration_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Select Main Menu    expenses    active
+    Wait Until Expense Active Page Load
+    Select Expense Grid Row    0
+    Verify Auto Complete Field Not Show In Expense Active Page    id=project    Podolski    ${netsuite}
+    Verify Auto Complete Field Not Show In Expense Active Page    id=client    Zibura    ${netsuite}
+    Click Ec Link    reports    user    ${EMPTY}
+    Wait Until Report Page Load
+    Select Report Grid Row    0
+    Wait Until Report Detail Page Load
+    Select Expense Grid Row    0
+    Verify Auto Complete Field Not Show In Expense Active Page    id=project    Podolski    ${netsuite}
+    Verify Auto Complete Field Not Show In Expense Active Page    id=client    Zibura    ${netsuite}
+
+TCA5_Import Netsuite Departments is checked (A5) - (1-High)
+    [Documentation]    Import Netsuite Departments is checked
+    [Tags]    Setup Netsuite    Suites Integration    Completed    Not Mailinator
+    Create Bulk Expenses And Submit Unsubmited Report    2    Miscellaneous    Mobile    ${netsuite}
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    id=background_msg_board_refresh_text
+    Run keyword If    ${value}    Click Element    id=background_msg_board_refresh_text    ELSE    Log    Page not contain background message.
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Select Checkbox Submit Form    ${netsuite}    ${EMPTY}    ${EMPTY}    ${EMPTY}    Check    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    Click Element    xpath=.//*[@id='${netsuite}Integration']//button[contains(.,"Save")]
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Click Ec Link    companies    department    ${EMPTY}
+    Dropdown Should Contain Connection Or Integration    Integration_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Sync Metadata    ${netsuite}    ${netsuite_account_id}    ${user_owner}
+    Wait Until Sync Metadata Successful    ${netsuite}'s department data (${netsuite_account_id}) is syncing
+    Select Main Menu    expenses    active
+    Wait Until Expense Active Page Load
+    Select Expense Grid Row    0
+    Verify Auto Complete Field Show In Expense Active Page    id=department    Sales    ${netsuite}
+    Click Ec Link    reports    user    ${EMPTY}
+    Wait Until Report Page Load
+    Select Report Grid Row    0
+    Wait Until Report Detail Page Load
+    Select Expense Grid Row    0
+    Verify Auto Complete Field Show In Report Detail Page    id=department    Customer    ${netsuite}
+
+TCA6_Import Netsuite Departments is unchecked (A6) - (1-High)
+    [Documentation]    Import Netsuite Departments is unchecked
+    [Tags]    Setup Netsuite    Suites Integration    Completed    Not Mailinator
+    Create Bulk Expenses And Submit Unsubmited Report    2    Miscellaneous    Mobile    ${netsuite}
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    id=background_msg_board_refresh_text
+    Run keyword If    ${value}    Click Element    id=background_msg_board_refresh_text    ELSE    Log    Page not contain background message.
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Select Checkbox Submit Form    ${netsuite}    ${EMPTY}    ${EMPTY}    ${EMPTY}    Uncheck    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    Click Element    xpath=.//*[@id='${netsuite}Integration']//button[contains(.,"Save")]
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Click Ec Link    companies    department    ${EMPTY}
+    Dropdown Should Not Contain Connection Or Integration    Integration_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Select Main Menu    expenses    active
+    Wait Until Expense Active Page Load
+    Select Expense Grid Row    0
+    Verify Auto Complete Field Not Show In Expense Active Page    id=department    Sales : Channel Sales    ${netsuite}
+    Click Ec Link    reports    user    ${EMPTY}
+    Wait Until Report Page Load
+    Select Report Grid Row    0
+    Wait Until Report Detail Page Load
+    Select Expense Grid Row    0
+    Verify Auto Complete Field Not Show In Report Detail Page    id=department    Customer    ${netsuite}
+
+TCA7_Import Netsuite Locations is checked (A7) - (1-High)
+    [Documentation]    Import Netsuite Locations is checked
+    [Tags]    Setup Netsuite    Suites Integration    Completed    Not Mailinator
+    Create Bulk Expenses And Submit Unsubmited Report    2    Miscellaneous    Mobile    ${netsuite}
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    id=background_msg_board_refresh_text
+    Run keyword If    ${value}    Click Element    id=background_msg_board_refresh_text    ELSE    Log    Page not contain background message.
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Select Checkbox Submit Form    ${netsuite}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    Check
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    Click Element    xpath=.//*[@id='${netsuite}Integration']//button[contains(.,"Save")]
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Click Ec Link    times    location    ${EMPTY}
+    Dropdown Should Contain Connection Or Integration    Integration_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Sync Metadata    ${netsuite}    ${netsuite_account_id}    ${user_owner}
+    Wait Until Sync Metadata Successful    ${netsuite}'s location data (${netsuite_account_id}) is syncing
+    Select Main Menu    expenses    active
+    Wait Until Expense Active Page Load
+    Select Expense Grid Row    0
+    Verify Auto Complete Field Show In Expense Active Page    id=location    Warehouse    ${netsuite}
+    Click Ec Link    reports    user    ${EMPTY}
+    Wait Until Report Page Load
+    Select Report Grid Row    0
+    Wait Until Report Detail Page Load
+    Select Expense Grid Row    0
+    Verify Auto Complete Field Show In Report Detail Page    id=location    West    ${netsuite}
+
+TCA8_Import Netsuite Locations is unchecked (A8) - (1-High)
+    [Documentation]    Import Netsuite Locations is unchecked
+    [Tags]    Setup Netsuite    Suites Integration    Completed    Not Mailinator
+    Create Bulk Expenses And Submit Unsubmited Report    2    Miscellaneous    Mobile    ${netsuite}
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    id=background_msg_board_refresh_text
+    Run keyword If    ${value}    Click Element    id=background_msg_board_refresh_text    ELSE    Log    Page not contain background message.
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Select Checkbox Submit Form    ${netsuite}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    Uncheck
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    Click Element    xpath=.//*[@id='${netsuite}Integration']//button[contains(.,"Save")]
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Click Ec Link    times    location    ${EMPTY}
+    Dropdown Should Not Contain Connection Or Integration    Integration_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Select Main Menu    expenses    active
+    Wait Until Expense Active Page Load
+    Select Expense Grid Row    0
+    Verify Auto Complete Field Not Show In Expense Active Page    id=location    Warehouse    ${netsuite}
+    Click Ec Link    reports    user    ${EMPTY}
+    Wait Until Report Page Load
+    Select Report Grid Row    0
+    Wait Until Report Detail Page Load
+    Select Expense Grid Row    0
+    Verify Auto Complete Field Not Show In Report Detail Page    id=location    West    ${netsuite}
+
+TCA9_Import Netsuite Classes is checked (A9) - (1-High)
+    [Documentation]    Import Netsuite Classes is checked
+    [Tags]    Setup Netsuite    Suites Integration    Completed    Not Mailinator
+    Create Bulk Expenses And Submit Unsubmited Report    2    Miscellaneous    Mobile    ${netsuite}
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    id=background_msg_board_refresh_text
+    Run keyword If    ${value}    Click Element    id=background_msg_board_refresh_text    ELSE    Log    Page not contain background message.
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Select Checkbox Submit Form    ${netsuite}    ${EMPTY}    ${EMPTY}    Check    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    Click Element    xpath=.//*[@id='${netsuite}Integration']//button[contains(.,"Save")]
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Click Ec Link    companies    classes    ${EMPTY}
+    Dropdown Should Contain Connection Or Integration    Integration_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Sync Metadata    ${netsuite}    ${netsuite_account_id}    ${user_owner}
+    Wait Until Sync Metadata Successful    ${netsuite}'s class data (${netsuite_account_id}) is syncing
+    Select Main Menu    expenses    active
+    Wait Until Expense Active Page Load
+    Select Expense Grid Row    0
+    Verify Auto Complete Field Show In Expense Active Page    id=clazz    Product Classification    ${netsuite}
+    Click Ec Link    reports    user    ${EMPTY}
+    Wait Until Report Page Load
+    Select Report Grid Row    0
+    Wait Until Report Detail Page Load
+    Select Expense Grid Row    0
+    Verify Auto Complete Field Show In Report Detail Page    id=clazz    Direct Sales    ${netsuite}
+
+TCA10_Import Netsuite Classes is unchecked (A10) - (1-High)
+    [Documentation]    Import Netsuite Classes is unchecked
+    [Tags]    Setup Netsuite    Suites Integration    Completed    Not Mailinator
+    Create Bulk Expenses And Submit Unsubmited Report    2    Miscellaneous    Mobile    ${netsuite}
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    id=background_msg_board_refresh_text
+    Run keyword If    ${value}    Click Element    id=background_msg_board_refresh_text    ELSE    Log    Page not contain background message.
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Select Checkbox Submit Form    ${netsuite}    ${EMPTY}    ${EMPTY}    Uncheck    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    Click Element    xpath=.//*[@id='${netsuite}Integration']//button[contains(.,"Save")]
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Click Ec Link    companies    classes    ${EMPTY}
+    Dropdown Should Not Contain Connection Or Integration    Integration_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Select Main Menu    expenses    active
+    Wait Until Expense Active Page Load
+    Select Expense Grid Row    0
+    Verify Auto Complete Field Not Show In Expense Active Page    id=clazz    Product Classification    ${netsuite}
+    Click Ec Link    reports    user    ${EMPTY}
+    Wait Until Report Page Load
+    Select Report Grid Row    0
+    Wait Until Report Detail Page Load
+    Select Expense Grid Row    0
+    Verify Auto Complete Field Not Show In Report Detail Page    id=clazz    Direct Sales    ${netsuite}
+
+TCA11_Mark expense report paid when export is unchecked (A11) - (1-High)
+    [Documentation]    Mark expense report paid when export is unchecked
+    [Tags]    Setup Netsuite    Suites Integration    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    Create Category Map    # Get list category into ${cat_map}
+    Create Bulk Expenses    2    Miscellaneous    Mobile    ${netsuite}    ${cat_map}
+    Submit Report All Curent Expense
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Select Checkbox Submit Form    ${netsuite}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    UnCheck    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    Click Element    xpath=.//*[@id='${netsuite}Integration']//button[contains(.,"Save")]
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Click Ec Link    reports    user    ${EMPTY}
+    Wait Until Report Page Load
+    Select Dropdown    filterStatus_chzn    Unpaid Reports
+    Report Row Should Contain Link    0    Not paid yet
+    Select Report Grid Row    0
+    Wait Until Report Detail Page Load
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Click Button    id=submitExport
+    Verify Message Export To Integration    Exported Successfully.
+    Click Ec Link    reports    user    ${EMPTY}
+    Wait Until Report Page Load
+    Report Row Should Contain Link    0    Not paid yet
+
+TCA12_Mark expense report paid when export is checked (A12) - (1-High)
+    [Documentation]    Check mark report paid when export is checked.
+    ...    Bug: https://trinet.atlassian.net/browse/ECDEV-5848 >>> DONE
+    [Tags]    Setup Netsuite    Suites Integration    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Remove All Dashboard Alerts
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    Create Category Map    # Get list category into ${cat_map}
+    Create Bulk Expenses    2    Miscellaneous    Mobile    ${netsuite}    ${cat_map}
+    Submit Report All Curent Expense
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Select Checkbox Submit Form    ${netsuite}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    Check    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    Click Element    xpath=.//*[@id='${netsuite}Integration']//button[contains(.,"Save")]
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Click Ec Link    reports    user    ${EMPTY}
+    Wait Until Report Page Load
+    Select Dropdown    filterStatus_chzn    Unpaid Reports
+    Report Row Should Contain Link    0    Not paid yet
+    Select Report Grid Row    0
+    Wait Until Report Detail Page Load
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Click Button    id=submitExport
+    Verify Message Export To Integration    Exported Successfully.
+    Click Ec Link    reports    user    ${EMPTY}
+    Wait Until Report Page Load
+    Report Row Should Contain Link    0    Other
+
+TCA13_Mark Integration Visible To Company & Allow All Users To View Integration Data are checked (A13) - (1-High)
+    [Documentation]    Mark Integration Visible To Company & Allow All Users To View Integration Data are checked
+    ...    Bug: https://trinet.atlassian.net/browse/ECDEV-5869 - FIXED
+    [Tags]    Setup Netsuite    Suites Integration    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Select Checkbox Submit Form    ${netsuite}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    Check    Check    ${EMPTY}    ${EMPTY}
+    Click Element    xpath=.//*[@id='${netsuite}Integration']//button[contains(.,"Save")]
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Click Element    xpath=.//div[@id="${netsuite}Integration"]//span[text()='Close']
+    Log Out Expense Cloud
+    Log In    ${sever_test}    ${user_myapprover_A}    ${pass_general}
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    Create Category Map    # Get list category into ${cat_map}
+    Create Bulk Expenses    2    Meals    ${EMPTY}    ${netsuite}    ${cat_map}
+    Submit Report All Curent Expense
+    Click Setting Menu    companies    classes    ${EMPTY}
+    Verify User Can Only View Integration Data    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}    Channel Sales
+    Click Ec Link    settings    client_project    ${EMPTY}
+    Verify User Can Only View Integration Data    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}    Anonymous Customer APAC
+    Click Ec Link    companies    department    ${EMPTY}
+    Verify User Can Only View Integration Data    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}    Engineering
+    Click Ec Link    times    location    ${EMPTY}
+    Verify User Can Only View Integration Data    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}    01 US - West Coast Warehouse
+    Select Main Menu    expenses    active
+    Wait Until Expense Active Page Load
+    Select Expense Grid Row    0
+    Input Expense Detail Values    Anonymous Customer APAC : Bris Proj    Anonymous Customer APAC    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    Engineering    ${EMPTY}    ${EMPTY}    Channel Sales    ${EMPTY}    01 US - West Coast Warehouse
+    ...    ${EMPTY}    ${EMPTY}
+    Click Element    id=saveEditTranButton    # Submit save expense
+    Click Ec Link    reports    user    ${EMPTY}
+    Wait Until Report Page Load
+    Select Report Grid Row    0
+    Wait Until Report Detail Page Load
+    Dropdown Should Not Contain Connection Or Integration    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+
+TCA14_Mark Integration Visible To Company is checked and Allow All Users To View Integration Data is unchecked (A14) - (1-High)
+    [Documentation]    Mark Integration Visible To Company & Allow All Users To View Integration Data is unchecked
+    [Tags]    Setup Netsuite    Suites Integration    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Select Checkbox Submit Form    ${netsuite}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    Check    Uncheck    ${EMPTY}    ${EMPTY}
+    Click Element    xpath=.//*[@id='${netsuite}Integration']//button[contains(.,"Save")]
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Click Element    xpath=.//div[@id="${netsuite}Integration"]//span[text()='Close']
+    Click Ec Link    companies    manage_users    ${EMPTY}
+    Assign User License    ${user_myapprover_A}    ${EMPTY}
+    Assign User License    ${user_comad}    ${EMPTY}
+    Log Out Expense Cloud
+    Log In    ${sever_test}    ${user_myapprover_A}    ${pass_general}
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    Create Category Map    # Get list category into ${cat_map}
+    Create Bulk Expenses    2    Meals    ${EMPTY}    ${netsuite}    ${cat_map}
+    Submit Report All Curent Expense
+    Click Setting Menu    companies    classes    ${EMPTY}
+    Dropdown Should Not Contain Connection Or Integration    Integration_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner}
+    Click Ec Link    settings    client_project    ${EMPTY}
+    Dropdown Should Not Contain Connection Or Integration    Integration_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner}
+    Click Ec Link    companies    department    ${EMPTY}
+    Dropdown Should Not Contain Connection Or Integration    Integration_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner}
+    Click Ec Link    times    location    ${EMPTY}
+    Dropdown Should Not Contain Connection Or Integration    Integration_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner}
+    Select Main Menu    expenses    active
+    Wait Until Expense Active Page Load
+    Select Expense Grid Row    0
+    #Verify Auto Complete Field Not Show In Expense Active Page    id=project    Podolski    ${netsuite}    # Ignore due to bug: https://trinet.atlassian.net/browse/ECDEV-4486
+    #Verify Auto Complete Field Not Show In Expense Active Page    id=client    Zibura    ${netsuite}    # Ignore due to bug: https://trinet.atlassian.net/browse/ECDEV-4486
+    Verify Auto Complete Field Not Show In Expense Active Page    id=department    Sales : Channel Sales    ${netsuite}
+    Verify Auto Complete Field Not Show In Expense Active Page    id=location    Warehouse    ${netsuite}
+    Verify Auto Complete Field Not Show In Expense Active Page    id=clazz    Channel Sales : New Business    ${netsuite}
+    Click Ec Link    reports    user    ${EMPTY}
+    Wait Until Report Page Load
+    Select Report Grid Row    0
+    Wait Until Report Detail Page Load
+    Dropdown Should Not Contain Connection Or Integration    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Log Out Expense Cloud
+    Log In    ${sever_test}    ${user_comad}    ${pass_general}
+    Click Setting Menu    companies    manage_users    ${EMPTY}
+    Select User    ${user_myapprover_A}
+    Page Should Contain    Edit User Information
+    Log    Company owner must set permission for user admin before check this step
+    Page Should Contain Element    xpath=.//strong[text()='Integration Permissions']
+    Checkbox Should Not Be Selected    name=data[User][integrations_view][]
+
+TCA15_Mark Integration Visible To Company is unchecked (A15) - (1-High)
+    [Documentation]    Mark Integration Visible To Company is unchecked
+    [Tags]    Setup Netsuite    Suites Integration    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Select Checkbox Submit Form    ${netsuite}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    UnCheck    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    Click Element    xpath=.//*[@id='${netsuite}Integration']//button[contains(.,"Save")]
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Click Element    xpath=.//div[@id="${netsuite}Integration"]//span[text()='Close']
+    Log Out Expense Cloud
+    Log In    ${sever_test}    ${user_myapprover_A}    ${pass_general}
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    Create Category Map    # Get list category into ${cat_map}
+    Create Bulk Expenses    2    Meals    ${EMPTY}    ${netsuite}    ${cat_map}
+    Submit Report All Curent Expense
+    Click Setting Menu    companies    classes    ${EMPTY}
+    Dropdown Should Not Contain Connection Or Integration    Integration_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner}
+    Click Ec Link    settings    client_project    ${EMPTY}
+    Dropdown Should Not Contain Connection Or Integration    Integration_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner}
+    Click Ec Link    companies    department    ${EMPTY}
+    Dropdown Should Not Contain Connection Or Integration    Integration_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner}
+    Click Ec Link    times    location    ${EMPTY}
+    Dropdown Should Not Contain Connection Or Integration    Integration_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner}
+    Select Main Menu    expenses    active
+    Wait Until Expense Active Page Load
+    Select Expense Grid Row    0
+    Verify Auto Complete Field Not Show In Expense Active Page    id=department    Sales : Channel Sales    ${netsuite}
+    Verify Auto Complete Field Not Show In Expense Active Page    id=location    Warehouse    ${netsuite}
+    Verify Auto Complete Field Not Show In Expense Active Page    id=clazz    Channel Sales : New Business    ${netsuite}
+    Click Ec Link    reports    user    ${EMPTY}
+    Wait Until Report Page Load
+    Select Report Grid Row    0
+    Wait Until Report Detail Page Load
+    Dropdown Should Not Contain Connection Or Integration    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Log Out Expense Cloud
+    Log In    ${sever_test}    ${user_comad}    ${pass_general}
+    Click Setting Menu    companies    manage_users    ${EMPTY}
+    Select User    ${user_myapprover_A}
+    Page Should Contain    Edit User Information
+    Page Should Not Contain Element    xpath=.//strong[text()='Integration Permissions']
+    Page Should Not Contain Element    name=data[User][integrations_view][]
+    #Checkbox Should Not Be Selected    name=data[User][integrations_view][]
+
+TCA16_Setup Netsuite from Report Detail page (A16) - (1-High)
+    [Documentation]    Setup Netsuite from Report Detail page
+    [Tags]    Setup Netsuite    Suites Integration    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    Create Category Map    # Get list category into ${cat_map}
+    Create Bulk Expenses    2    Meals    ${EMPTY}    ${netsuite}    ${cat_map}
+    Submit Report All Curent Expense
+    Wait Until Report Detail Page Load
+    Click Element    id=lnkSettings
+    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style, 'display: block')]//span[contains(text(),'Report Submission Setup')]
+    Page Should Contain Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style, 'display: block')]//a[text()='Add more integrations']    # Verify link=Add more integrations
+    Click Link    link=Add more integrations
+    Click Ec Link    settings    report    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+
+TCA17_Setup the second Netsuite connections (A17) - (1-High)
+    [Documentation]    Setup the second Netsuite connections
+    [Tags]    Setup Netsuite    Suites Integration    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Click Setting Menu    settings    report    ${EMPTY}
+    Delete Connection Or Integration By Name If Exist    ${netsuite}
+    Wait Until Page Contains    Add more integrations    ${TIMEOUT}
+    Click Link    link=Add more integrations
+    Click Ec Link    settings    report    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Click Element    xpath=.//div[@id="${netsuite}Integration"]//span[text()='Close']
+    Wait Until Page Contains Element    xpath=.//p[@name='${netsuite}Integration']/span[@oldtitle="Delete"]    ${TIMEOUT}
+    Click Link    link=Add more integrations
+    Click Ec Link    settings    report    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Click Element    xpath=.//div[@id="${netsuite}Integration"]//span[text()='Close']
+
+TCA18_Setup more than two Netsuite connections (A18) - (2-Medium)
+    [Documentation]    TC_Setup more than two Netsuite connections
+    [Tags]    Setup Netsuite    Suites Integration    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Click Setting Menu    settings    report    ${EMPTY}
+    Delete Connection Or Integration By Name If Exist    ${netsuite}
+    : FOR    ${I}    IN RANGE    1    4
+    \    Click Ec Link    settings    addons    ${EMPTY}
+    \    ${value}    Run Keyword And Return Status    Click Ec Link    settings    report    ${netsuite}
+    \    Run Keyword If    '${value}' == 'False'    Log    User cannot setup the ${I}rd Netsuite connection
+    \    Run Keyword If    '${value}' == 'False'    Exit For Loop
+    \    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    \    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    \    Click Element    xpath=.//div[@id="${netsuite}Integration"]//span[text()='Close']
+
+TCA19_Setup Netsuite with incorrect information (A19) - (2-Medium)
+    [Documentation]    Setup Netsuite with incorrect information
+    [Tags]    Setup Netsuite    Suites Integration    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Click Setting Menu    settings    report    ${EMPTY}
+    Delete Connection Or Integration By Name If Exist    ${netsuite}
+    Click Ec Link    settings    addons    ${EMPTY}
+    Click Ec Link    settings    report    ${netsuite}
+    Input Netsuite Account And Submit    incorrect usernane    incorrect password    incorrect accountID
+    Wait Until Page Contains Element    xpath=.//p[@id='netsuiteMessage'][text()='Your credential information is invalid. Please try again.']    ${TIMEMAX}
+
+TCA20_Setup Netsuite with invalid Integration credential (A20) - (2-Medium)
+    [Documentation]    Setup Netsuite with invalid Integration credential
+    [Tags]    Setup Netsuite    Suites Integration    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Click Setting Menu    settings    report    ${EMPTY}
+    Delete Connection Or Integration By Name If Exist    ${netsuite}
+    Click Ec Link    settings    addons    ${EMPTY}
+    Click Ec Link    settings    report    ${netsuite}
+    Input Netsuite Account And Submit    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    Wait Until Page Contains Element    xpath=.//p[@id='netsuiteMessage'][text()='Please enter your email address.']    ${TIMEMAX}
+
+TCA21_Setup integration by free user (A21) - (1-High)
+    [Documentation]    Setup integration by free user
+    [Tags]    Setup Netsuite    Suites Integration    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_freeuser}    ${pass_general}
+    Click Setting Menu    settings    addons    ${EMPTY}
+    Wait Until Page Contains Element    xpath=.//p[@id='paid-message-Netsuite'][contains(text(),'This Feature Requires A Paid Plan')]    ${TIMEOUT}
+    Page Should Contain Element    xpath=.//p[@id='paid-message-Netsuite']/a[text()='Upgrade Now']
+    Click Element    xpath=.//p[@id='paid-message-Netsuite']/preceding-sibling::a[2][text()='Install']    # Click setup netsuite
+    Wait Until Page Contains Element    id=licenses    ${TIMEWAIT}
+    Location Should Be    ${sever_test}/payments/pricing    # Vefify URL
+
+TCA22_Setup Netsuite with invalid email on TO, CC text-boxes (A22) - (2-Medium)
+    [Documentation]    Setup Netsuite with invalid email on TO, CC text-boxes
+    [Tags]    Setup Netsuite    Suites Integration    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Click Setting Menu    settings    report    ${EMPTY}
+    Delete Connection Or Integration By Name If Exist    ${netsuite}
+    Click Ec Link    settings    addons    ${EMPTY}
+    Click Ec Link    settings    report    ${netsuite}
+    Input Netsuite Account    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Input Integration To CC    ${netsuite}    Invalid email To    Invalid email Cc
+    Click Element    xpath=.//*[@id='${netsuite}Integration']//button[contains(.,"Save")]
+    Wait Until Page Contains Element    xpath=.//p[@id='netsuiteMessage'][text()='TO email is invalid']    ${TIMEMAX}
+
+PENDING WAIT FOR NEW BUSINESS TCA23_TO email has not existed on Trinet Expense (A23) - (1-High)
+    [Documentation]    TO email has not existed on Trinet Expense
+    [Tags]    Setup Netsuite    Suites Integration    Pending
+    Create Bulk Expenses And Submit Unsubmited Report    2    Miscellaneous    Mobile    ${netsuite}
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Input Integration To CC    ${netsuite}    ${user_freeuser}    ${EMPTY}
+    Click Element    xpath=.//*[@id='${netsuite}Integration']//button[contains(.,"Save")]
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Click Element    xpath=.//div[@id="${netsuite}Integration"]//span[text()='Close']
+    Click Ec Link    reports    user    ${EMPTY}
+    Wait Until Report Page Load
+    Select Report Grid Row    0
+    Wait Until Report Detail Page Load
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Click Button    id=submitExport
+    Verify Message Export To Integration    Exported Successfully.
+
+PENDING WAIT FOR NEW BUSINESS NOT YET TCA24_CC email has not existed on Trinet Expense (A24) - (1-High)
+    [Documentation]    CC email has not existed on Trinet Expense
+    [Tags]    Setup Netsuite    Suites Integration
+
+PENDING WAIT FOR NEW BUSINESS NOT YET TCA25_TO email is existing on Trinet Expense (A25) - (1-High)
+    [Documentation]    TO email is existing on Trinet Expense
+    [Tags]    Setup Netsuite    Suites Integration
+
+PENDING WAIT FOR NEW BUSINESS NOT YET TC_CCA26 email is existing on Trinet Expense (A26) - (1-High)
+    [Documentation]    CC email is existing on Trinet Expense
+    [Tags]    Setup Netsuite    Suites Integration
+    Log In    ${sever_test}    ${user_myapprover_A}    ${pass_general}
+    Log Out Expense Cloud
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+
+REMOVE ON DEV02 TCA27_Submit All Expenses To Employee Center is checked (A27) - (1-High)
+    [Documentation]    Submit All Expenses To Employee Center is checked
+    [Tags]    Setup Netsuite    Suites Integration    Removed on Dev02
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Remove All Dashboard Alerts
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    Click Setting Menu    settings    report    ${EMPTY}
+    Delete Connection Or Integration By Name If Exist    Approver
+    Delete Connection Or Integration By Name If Exist    Approver2
+    Delete Connection Or Integration By Name If Exist    Bookkeeper
+    Setup A Connection In Setting Page    Approver    ${user_owner}
+    Click Ec Link    expenses    active    ${EMPTY}
+    Wait Until Expense Active Page Load
+    Create Expense And Input Detail Values    ${EMPTY}    Expense Reimbursable    Miscellaneous    Mobile    125    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    Reimbursable    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Expense And Input Detail Values    ${EMPTY}    Expense Non Reimbursable    Hotels    ${EMPTY}    50    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    Prepaid (Non-Reimbursable)    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Report With Input Report Name    Report_A27    ${EMPTY}    ${EMPTY}    ${EMPTY}    Is    ${EMPTY}
+    Wait Until Report Detail Page Load
+    Dropdown Should Contain Connection Or Integration    exportType_chzn    My Approver
+    Select Dropdown    exportType_chzn    My Approver
+    ${yyyy}    ${mm}    ${dd}    Get Time    year,month,day
+    ${approve_date}    Set Variable    ${yyyy}-${mm}-${dd}
+    Click Button    id=submitExport
+    Verify Page Show Message    success    Exported Successfully.
+    Reload Page And Wait Until Dashboard Page Contains    An expense report for ${user_owner} is ready to be reviewed    ${approve_date}
+    Click Element    xpath=.//a[text()='An expense report for ${user_owner} is ready to be reviewed']
+    Wait Until Report Detail Page Load
+    Click Button    id=btnApproved
+    Wait Until Page Contains Element    xpath=.//i[@class='approved'][contains(.,'Approved')]    ${TIMEOUT}
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Click Element    xpath=.//div[@id="${netsuite}Integration"]//span[text()='Close']
+    Select Main Menu    reports    approval
+    #Wait Until Report Page Load
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    Page Should Contain Link    link=Report_A27
+    Click Link    link=Report_A27
+    Wait Until Report Detail Page Load
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Click Button    id=submitExport
+    Verify Message Export To Integration    Exported Successfully.
+    #Login EC And Verify Report Detail    ${user_myapprover_A}    ${pass_general}    Report_A27    Report_A27    An expense report for ${user_owner} is ready to be reviewed    ${approve_date}
+
+REMOVE ON DEV02 TCA28_Multi-Entry Based on Reimbursable Status is checked (A28) - (1-High)
+    [Documentation]    Multi-Entry Based on Reimbursable Status is checked
+    [Tags]    Setup Netsuite    Suites Integration    Removed on Dev02
+
+TCA29_Setup Netsuite by paid employee in a company that don't allow user to setup their integration (A29) - (2-Medium)
+    [Documentation]    Setup Netsuite by paid employee in a company that don't allow user to setup their integration
+    [Tags]    Setup Netsuite    Suites Integration    Completed
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Click Setting Menu    settings    company    ${EMPTY}
+    Wait Until Page Contains Element    id=CompanyName    ${TIMEOUT}
+    ${adress}=    Get Text    id=CompanyAddress
+    Run Keyword If    '${adress}' == '${EMPTY}'    Set Company Info    ${EMPTY}    ${EMPTY}    ${EMPTY}    76, CMT8
+    ...    American    California    United States    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}
+    Set Company User Permissions    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    Uncheck
+    Click Button    id=btnSave
+    Verify Page Show Message    success    Company updated
+    Click Ec Link    companies    manage_users    ${EMPTY}
+    Assign User License    ${user_myapprover_A}    ${EMPTY}
+    Log Out Expense Cloud
+    Log In    ${sever_test}    ${user_myapprover_A}    ${pass_general}
+    Click Setting Menu    settings    addons    ${EMPTY}
+    Verify Page Show Message    warn    Your company does not allow users to set up their own integrations. Please contact your company administrator for further action.
+    Page Should Contain Element    xpath=.//a[text()='Install'][@href='/settings/report/Netsuite'][@onclick='scrollToTop(); return false;']
+    Click Element    xpath=.//a[text()='Install'][@href='/settings/report/Netsuite'][@onclick='scrollToTop(); return false;']
+    Log Out Expense Cloud
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Click Setting Menu    companies    manage_users    ${EMPTY}
+    Remove User License    ${user_myapprover_A}    ${EMPTY}
+
+TCA30_Setup Netsuite by paid bookkeeper in company that don't allow user to setup their integration (A30) - (1-High)
+    [Documentation]    Setup Netsuite by paid bookkeeper in company that don't allow user to setup their integration
+    [Tags]    Setup Netsuite    Suites Integration
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Click Setting Menu    settings    company    ${EMPTY}
+    Wait Until Page Contains Element    id=CompanyName    ${TIMEOUT}
+    ${adress}=    Get Text    id=CompanyAddress
+    Run Keyword If    '${adress}' == '${EMPTY}'    Set Company Info    ${EMPTY}    ${EMPTY}    ${EMPTY}    76, CMT8
+    ...    NewYork    California    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}
+    Set Company User Permissions    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    Uncheck
+    Click Button    id=btnSave
+    Verify Page Show Message    success    Company updated
+    Click Ec Link    companies    manage_users    ${EMPTY}
+    Set Role Employee    ${user_bookkeeper_C}    Bookkeeper
+    Assign User License    ${user_bookkeeper_C}    ${EMPTY}
+    Log Out Expense Cloud
+    Log In    ${sever_test}    ${user_bookkeeper_C}    ${pass_general}
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Click Setting Menu    settings    report    ${EMPTY}
+    Verify A Connection Or Integration Existed    ${netsuite}    ${user_owner}
+
+TCA31_Setup Netsuite by paid company admin in company that don't allow user to setup their integration (A31) - (1-High)
+    [Documentation]    Setup Netsuite by paid company admin in company that don't allow user to setup their integration
+    [Tags]    Setup Netsuite    Suites Integration
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Click Setting Menu    settings    company    ${EMPTY}
+    Wait Until Page Contains Element    id=CompanyName    ${TIMEOUT}
+    ${adress}=    Get Text    id=CompanyAddress
+    Run Keyword If    '${adress}' == '${EMPTY}'    Set Company Info    ${EMPTY}    ${EMPTY}    ${EMPTY}    76, CMT8
+    ...    NewYork    California    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}
+    Set Company User Permissions    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    Uncheck
+    Click Button    id=btnSave
+    Verify Page Show Message    success    Company updated
+    Click Ec Link    companies    manage_users    ${EMPTY}
+    Set Role Employee    ${user_comad}    Admin
+    Assign User License    ${user_comad}    ${EMPTY}
+    Log Out Expense Cloud
+    Log In    ${sever_test}    ${user_comad}    ${pass_general}
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Click Setting Menu    settings    report    ${EMPTY}
+    Verify A Connection Or Integration Existed    ${netsuite}    Compn Ad
+    Delete Connection Or Integration By Name If Exist    ${netsuite}
+
+TCA32_Setup Netsuite by paid company owner in company that don't allow user to setup their integration (A32) - (1-High)
+    [Documentation]    Setup Netsuite by paid company owner in company that don't allow user to setup their integration
+    [Tags]    Setup Netsuite    Suites Integration
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Click Setting Menu    settings    company    ${EMPTY}
+    Wait Until Page Contains Element    id=CompanyName    ${TIMEOUT}
+    ${adress}=    Get Text    id=CompanyAddress
+    Run Keyword If    '${adress}' == '${EMPTY}'    Set Company Info    ${EMPTY}    ${EMPTY}    ${EMPTY}    76, CMT8
+    ...    NewYork    California    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}
+    Set Company User Permissions    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    Uncheck
+    Click Button    id=btnSave
+    Verify Page Show Message    success    Company updated
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Click Setting Menu    settings    report    ${EMPTY}
+    Verify A Connection Or Integration Existed    ${netsuite}    ${user_owner}
+
+TCA33_Setup two Netsuite connections with the same name (A33) - (2-Medium)
+    [Documentation]    Setup two Netsuite connections with the same name (A33) - (2-Medium)
+    [Tags]    Setup Netsuite    Suites Integration
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Click Setting Menu    settings    report    ${EMPTY}
+    Delete Connection Or Integration By Name If Exist    ${netsuite}
+    Click Ec Link    settings    addons    ${EMPTY}
+    Click Ec Link    settings    report    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Click Element    xpath=.//div[@id="${netsuite}Integration"]//span[text()='Close']
+    Click Link    link=Add more integrations
+    Click Ec Link    settings    report    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Click Element    xpath=.//div[@id="${netsuite}Integration"]//span[text()='Close']
+
+*** Keywords ***
+Check Add Stage For Submit Form If Not Exist
+    [Arguments]    ${stage_value}
+    [Documentation]    COMMON_KEY: Check stage exist or not, if not exist, add new stage for integration Netsuite & Intacct
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[@id='netsuiteSyncStage_chzn']//span[text()='${stage_value}']
+    Run Keyword If    ${value}    Log    Stage "${stage_value}" is existed.    ELSE    Add New Stage    ${stage_value}
+
+Add New Stage
+    [Arguments]    ${stage_value}
+    [Documentation]    COMMON_KEY: Add new stage for integration Netsuite & Intacct
+    ...    SUB keyword for "Check Add Stage For Submit Form If Not Exist"
+    Input Text    xpath=.//div[@id='netsuiteSyncStage_chzn']//input[@class='default']    ${stage_value}
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[@id='netsuiteSyncStage_chzn']//em[text()='${stage_value}']    # Auto complete show exist stage
+    Run Keyword If    ${value}    Click Element    xpath=.//div[@id='netsuiteSyncStage_chzn']//em[text()='${stage_value}']    ELSE    Log    The stage value "${stage_value}" does not exist.
+    ...    warn
+
+Verify Warning Dialog Box Show
+    [Arguments]    ${msg_show}
+    [Documentation]    COMMON_KEY: Verify the warning dialog show
+    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]    ${TIMEWAIT}
+    Element Text Should Be    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//div[@id='validatePolicyDialog']/p    ${msg_show}
+    Page Should Contain Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//div[@id='btnFixViolationReport']    # Verify dialog show Fix button
+    Page Should Contain Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//div[@id='btnSubmitViolationReport']    # Verify dialog show Submit button
+
+Sync Metadata
+    [Arguments]    ${inte_name}    ${inte_account_id}    ${user_owner}
+    [Documentation]    COMMON_KEY: Access Clients & Project in setting page, select intergration and submit sync
+    Select Dropdown    Integration_chzn    ${inte_name} - ${inte_account_id} - ${user_owner_fullname}
+    Click Button    id=syncMetadata
+
+Wait Until Sync Metadata Successful
+    [Arguments]    ${message_sync}
+    [Documentation]    COMMON_KEY: After click sync client & project in setting page, check message syncing to completed.
+    Wait Until Page Contains Element    id=background_msg_board_refresh    ${TIMEWAIT}
+    Page Should Contain Element    xpath=.//div[@id='background_msg_board_list']//span[@class='bg_prog_status Running']
+    Sleep    ${TIMESLEEP}
+    Click Element    id=background_msg_board_refresh
+    Wait Until Page Contains    ${message_sync}    ${TIMEWAIT}
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[@id='background_msg_board_list']//span[@class='bg_prog_status Completed']    ${TIMEMAX}
+    Run keyword If    ${value}    Click Element    id=background_msg_board_refresh_text    ELSE    Wait Until Sync Metadata Successful    ${message_sync}
+
+Verify Auto Complete Field Show In Expense Active Page
+    [Arguments]    ${id_field}    ${value_field}    ${inte_name}
+    [Documentation]    COMMON_KEY: Verify auto comptete field in expense active page
+    Wait Until Page Contains Element    xpath=.//div[contains(@class,'lhv-table-editor')][contains(@style,'display: block;')]    ${TIMEWAIT}    # Wait until table editor show
+    Run Keyword If    '${id_field}' == 'id=project'    Verify Auto Complete Field Show In Detail Panel    ${id_field}    ${value_field}    ${inte_name}    id=btnSearchProject
+    ...    ELSE IF    '${id_field}' == 'id=client'    Verify Auto Complete Field Show In Detail Panel    ${id_field}    ${value_field}    ${inte_name}
+    ...    id=btnSearchClient    ELSE IF    '${id_field}' == 'id=department'    Verify Auto Complete Field Show In Detail Panel    ${id_field}    ${value_field}
+    ...    ${inte_name}    ${EMPTY}    ELSE IF    '${id_field}' == 'id=clazz'    Verify Auto Complete Field Show In Detail Panel    ${id_field}
+    ...    ${value_field}    ${inte_name}    ${EMPTY}    ELSE IF    '${id_field}' == 'id=location'    Verify Auto Complete Field Show In Detail Panel
+    ...    ${id_field}    ${value_field}    ${inte_name}    ${EMPTY}    ELSE    Verify Auto Complete Field Show
+    ...    ${id_field}    ${value_field}    ${inte_name}    ${EMPTY}
+
+Verify Auto Complete Field Show In Report Detail Page
+    [Arguments]    ${id_field}    ${value_field}    ${inte_name}
+    [Documentation]    COMMON_KEY: Verify auto comptete field in expense active page
+    Wait Until Page Contains Element    xpath=.//div[contains(@class,'lhv-table-editor')][contains(@style,'display: block;')]    ${TIMEWAIT}    # Wait until table editor show
+    Run Keyword If    '${id_field}' == 'id=project'    Verify Auto Complete Field Show    ${id_field}    ${value_field}    ${inte_name}    id=btnSearchProject
+    ...    ELSE IF    '${id_field}' == 'id=client'    Verify Auto Complete Field Show    ${id_field}    ${value_field}    ${inte_name}
+    ...    id=btnSearchClient    ELSE IF    '${id_field}' == 'id=department'    Verify Auto Complete Field Show In Detail Panel    ${id_field}    ${value_field}
+    ...    ${inte_name}    ${EMPTY}    ELSE IF    '${id_field}' == 'id=clazz'    Verify Auto Complete Field Show In Detail Panel    ${id_field}
+    ...    ${value_field}    ${inte_name}    ${EMPTY}    ELSE IF    '${id_field}' == 'id=location'    Verify Auto Complete Field Show In Detail Panel
+    ...    ${id_field}    ${value_field}    ${inte_name}    ${EMPTY}    ELSE    Verify Auto Complete Field Show
+    ...    ${id_field}    ${value_field}    ${inte_name}    ${EMPTY}
+
+Verify Auto Complete Field Show In Detail Panel
+    [Arguments]    ${id_field}    ${value_field}    ${inte_name}    ${id_search}
+    [Documentation]    COMMON_KEY: Verify Auto Complete Field Show in detail form edit expense
+    ${value}    Run Keyword And Return Status    Page Should Not Contain Element    xpath=.//div[@id='editDetailsPanel'][@style='display: none;']    # Check edit detail panel not show.
+    Run Keyword If    '${value}' == 'False'    Click Element    xpath=.//div[@id='editDetailsButton'][@class='edit_detail_btn hide-this']    # Click to show detail panel
+    Page Should Not Contain Element    xpath=.//div[@id='editDetailsPanel'][@style='display: none;']
+    Verify Auto Complete Field Show    ${id_field}    ${value_field}    ${inte_name}    ${id_search}
+
+Verify Auto Complete Field Show
+    [Arguments]    ${id_field}    ${value_field}    ${inte_name}    ${id_search}
+    [Documentation]    COMMON_KEY: Input value to show auto complete field, if not, click button show
+    ...    Verify Auto Complete Field Show | id=client | ABC | id=btnSearchClient
+    Input Text    ${id_field}    ${value_field}
+    ${val_btn_search}    Run Keyword And Return Status    Page Should Contain Element    ${id_search}
+    Run Keyword If    ${val_btn_search}    Click Button    ${id_search}
+    ${val_ul_autocomplete}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//ul[contains(@class,'ui-autocomplete')][contains(@style,'display: block;')]    ${TIMEOUT}
+    Run Keyword If    ${val_ul_autocomplete}    Verify Value Exist In Autocomplete    ${inte_name}    ELSE    Log    Page not show any results match with value input.
+
+Verify Value Exist In Autocomplete
+    [Arguments]    ${inte_name}
+    [Documentation]    COMMON_KEY: Verify value exist in autocomplete field
+    ${val_verify}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//ul[contains(@class,'ui-autocomplete')][contains(@style,'display: block;')]/li[text()='${inte_name}']    # Check Value
+    Run Keyword If    ${val_verify}    Log    Auto complete show list match with values input of integration ${inte_name}.    ELSE    Check Next Btn To Verify Value In Autocomplete    ${inte_name}
+
+Check Next Btn To Verify Value In Autocomplete
+    [Arguments]    ${inte_name}
+    [Documentation]    COMMON_KEY: Check next btn exist and click, then verify value in autocomplete field
+    ${val_nextbtn}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//a[@class='next']    # Check btn "Next" exist
+    Run Keyword If    ${val_nextbtn}    Click Next Btn To Check Value In Autocomplete    ${inte_name}
+
+Click Next Btn To Check Value In Autocomplete
+    [Arguments]    ${inte_name}
+    [Documentation]    COMMON_KEY: Verify value, if not exist, check btn "Next" and loop again
+    Click Element    xpath=.//a[@class='next']    # Click btn "Next"
+    ${val_verify}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//ul[contains(@class,'ui-autocomplete')][contains(@style,'display: block;')]/li[text()='${inte_name}']    # Check Value
+    Run Keyword If    ${val_verify}    Log    Auto complete show list match with values input of integration ${inte_name} after click search button.    ELSE    Check Next Btn To Verify Value In Autocomplete    ${inte_name}
+    Run Keyword If    '${val_verify}' == 'False'    Log    The value not exist.
+
+Verify Expense Field
+    [Arguments]    ${id_field}    ${value_field}
+    [Documentation]    COMMON_KEY: Verify expense field
+    ${value}    Run Keyword And Return Status    Page Should Not Contain Element    xpath=.//div[@id='editDetailsPanel'][@style='display: none;']    # Check edit detail panel not show.
+    Run Keyword If    '${value}' == 'False'    Click Element    xpath=.//div[@id='editDetailsButton'][@class='edit_detail_btn hide-this']    # Click to show detail panel
+    Page Should Not Contain Element    xpath=.//div[@id='editDetailsPanel'][@style='display: none;']
+    Element Text Should Be    id=department    Sales : Channel Sales
+
+Verify Auto Complete Field Not Show In Expense Active Page
+    [Arguments]    ${id_field}    ${value_field}    ${inte_name}
+    [Documentation]    COMMON_KEY: Verify auto comptete field in expense active page
+    Wait Until Page Contains Element    xpath=.//div[contains(@class,'lhv-table-editor')][contains(@style,'display: block;')]    ${TIMEWAIT}    # Wait until table editor show
+    Run Keyword If    '${id_field}' == 'id=project'    Verify Auto Complete Field Not Show In Detail Panel    ${id_field}    ${value_field}    ${inte_name}    id=btnSearchProject
+    ...    ELSE IF    '${id_field}' == 'id=client'    Verify Auto Complete Field Not Show In Detail Panel    ${id_field}    ${value_field}    ${inte_name}
+    ...    id=btnSearchClient    ELSE IF    '${id_field}' == 'id=department'    Verify Auto Complete Field Not Show In Detail Panel    ${id_field}    ${value_field}
+    ...    ${inte_name}    ${EMPTY}    ELSE IF    '${id_field}' == 'id=clazz'    Verify Auto Complete Field Not Show In Detail Panel    ${id_field}
+    ...    ${value_field}    ${inte_name}    ${EMPTY}    ELSE IF    '${id_field}' == 'id=location'    Verify Auto Complete Field Not Show In Detail Panel
+    ...    ${id_field}    ${value_field}    ${inte_name}    ${EMPTY}    ELSE    Verify Auto Complete Field Not Show
+    ...    ${id_field}    ${value_field}    ${inte_name}    ${EMPTY}
+
+Verify Auto Complete Field Not Show In Report Detail Page
+    [Arguments]    ${id_field}    ${value_field}    ${inte_name}
+    [Documentation]    COMMON_KEY: Verify auto comptete field in expense active page
+    Wait Until Page Contains Element    xpath=.//div[contains(@class,'lhv-table-editor')][contains(@style,'display: block;')]    ${TIMEWAIT}    # Wait until table editor show
+    Run Keyword If    '${id_field}' == 'id=project'    Verify Auto Complete Field Not Show    ${id_field}    ${value_field}    ${inte_name}    id=btnSearchProject
+    ...    ELSE IF    '${id_field}' == 'id=client'    Verify Auto Complete Field Not Show    ${id_field}    ${value_field}    ${inte_name}
+    ...    id=btnSearchClient    ELSE IF    '${id_field}' == 'id=department'    Verify Auto Complete Field Not Show In Detail Panel    ${id_field}    ${value_field}
+    ...    ${inte_name}    ${EMPTY}    ELSE IF    '${id_field}' == 'id=clazz'    Verify Auto Complete Field Not Show In Detail Panel    ${id_field}
+    ...    ${value_field}    ${inte_name}    ${EMPTY}    ELSE IF    '${id_field}' == 'id=location'    Verify Auto Complete Field Not Show In Detail Panel
+    ...    ${id_field}    ${value_field}    ${inte_name}    ${EMPTY}    ELSE    Verify Auto Complete Field Not Show
+    ...    ${id_field}    ${value_field}    ${inte_name}    ${EMPTY}
+
+Verify Auto Complete Field Not Show In Detail Panel
+    [Arguments]    ${id_field}    ${value_field}    ${inte_name}    ${id_search}
+    [Documentation]    COMMON_KEY: Input value into auto complete field to check integration not show in detail panel
+    ${value}    Run Keyword And Return Status    Page Should Not Contain Element    xpath=.//div[@id='editDetailsPanel'][@style='display: none;']    # Check edit detail panel not show.
+    Run Keyword If    '${value}' == 'False'    Click Element    xpath=.//div[@id='editDetailsButton'][@class='edit_detail_btn hide-this']    # Click to show detail panel
+    Page Should Not Contain Element    xpath=.//div[@id='editDetailsPanel'][@style='display: none;']
+    Verify Auto Complete Field Not Show    ${id_field}    ${value_field}    ${inte_name}    ${id_search}
+
+Verify Auto Complete Field Not Show
+    [Arguments]    ${id_field}    ${value_field}    ${inte_name}    ${id_search}
+    [Documentation]    COMMON_KEY: Input value into auto complete field to check integration not show expense edit form
+    ...    Verify Auto Complete Field Show | id=client | ABC | id=btnSearchClient
+    Input Text    ${id_field}    ${value_field}
+    ${val_btn_search}    Run Keyword And Return Status    Page Should Contain Element    ${id_search}
+    Run Keyword If    ${val_btn_search}    Click Button    ${id_search}
+    Sleep    ${TIMESLEEP}
+    Page Should Not Contain Element    xpath=.//ul[contains(@class,'ui-autocomplete')][contains(@style,'display: block;')]
+    #Click Search Button To Check Auto Complete Not Show    ${inte_name}    ${id_search}
+
+Verify User Can Only View Integration Data
+    [Arguments]    ${val_dropdown}    ${data_name}
+    [Documentation]    COMMON_KEY: Access integration data (class, client-proj, department, location),
+    ...    select dropdown to verify data can view only
+    Select Dropdown    Integration_chzn    ${val_dropdown}
+    Wait Until Gird Page Load    grid    ${EMPTY}
+    Page Should Contain Element    xpath=.//div[@id='CustomGridHeader'][@style='display: none;']//span[text()='Add']
+    Page Should Contain Element    xpath=.//div[@id='CustomGridHeader'][@style='display: none;']//span[text()='Remove']
+    Wait Until Page Contains Element    xpath=.//div[@id='grid']//span[text()='${data_name}']    ${TIMEOUT}

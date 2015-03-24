@@ -1,0 +1,45 @@
+*** Settings ***
+Documentation     /* LIST KEYWORD REUSE FOR LOGIN */
+Library           Selenium2Library
+Resource          ../../conf/selenium_connect.txt
+
+*** Keywords ***
+Log In
+    [Arguments]    ${url_sever}    ${username}    ${password}
+    [Documentation]    COMMON_KEY: Login expense cloud
+    # Pass Execution
+    ${kw}=    Register Keyword To Run On Failure    Nothing
+    ${value}    Run Keyword And Return Status    Go To    ${url_sever}
+    Run Keyword If    ${value}    Log    Windown is selected.    ELSE    Open Expense Cloud Browser    ${url_sever}
+    Click Link    /users/login
+    Register Keyword To Run On Failure    ${kw}
+    Set Selenium Speed    ${DELAY}
+    Set Selenium Timeout    ${TIMEOUT}
+    Maximize Browser Window
+    #Wait Until Page Contains    TriNet Expense - Users Login    ${TIMEMAX}
+    Title Should Be    TriNet Expense - Users Login
+    Input Values Login Page    ${username}    ${password}
+    Click Button    id=btnLogin    # Submit login
+
+Input Values Login Page
+    [Arguments]    ${username}    ${password}
+    [Documentation]    COMMON_KEY: Input username & password in login page
+    Run Keyword If    '{username}' <> '${EMPTY}'    Input Text    id=UserEmail    ${username}    ELSE    Log
+    ...    Username is empty.    # Input username
+    Run Keyword If    '{password}' <> '${EMPTY}'    Input Text    id=UserPassword    ${password}    ELSE    Log
+    ...    Password is empty.    # Input password
+
+Open Expense Cloud Browser
+    [Arguments]    ${url}
+    [Documentation]    COMMON_KEY: Open expense browser
+    Open Browser    ${url}    ${BROWSER}    remote_url=${SERVER}
+    #Title Should Be    TriNet Expense Home    (will change on next release)
+    Title Should Be    TriNet Expense - Expenses Software | Small Business Expense Report Tracking Software
+
+Log Out Expense Cloud
+    [Documentation]    COMMON_KEY: Log Out Expense Cloud
+    Mouse Over    xpath=.//a[text()='Logout']
+    Sleep    1s
+    Click Link    /users/logout
+    #Title Should Be    TriNet Expense Users Login
+    Title Should Be    title=TriNet Expense - Users Login

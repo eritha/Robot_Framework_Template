@@ -1,0 +1,1987 @@
+*** Settings ***
+Documentation     /* Suite Export Report To Netsuite Integration */
+Suite Setup       Set Server
+Test Teardown     Close All Browsers
+Resource          ../../conf/selenium_connect.txt
+Library           Selenium2Library    60 sec
+
+*** Variables ***
+${report_approve_name}    Export_report_to_Netsuite
+${invalid_report_approve_name}    Export_report_to_Netsuite_Invalid
+${negative_report_approve_name}    Export_report_to_Netsuite_Negative
+${report_approve_name_A1}    Export_report_to_Netsuite_A1
+${report_approve_name_A2}    Export_report_to_Netsuite_A2
+${report_approve_name_A5}    Export_report_to_Netsuite_A5
+${report_approve_name_A6}    Export_report_to_Netsuite_A6
+${report_approve_name_A10}    Export_report_to_Netsuite_A10
+${report_approve_name_A11}    Export_report_to_Netsuite_A11
+${report_approve_name_A26}    Export_report_to_Netsuite_A26
+# Valid Values
+${valid_client}    Autoscript New Customer
+${valid_department}    Sales : Channel Sales
+${valid_class}    Channel Sales
+${valid_location}    CMT8, HCM
+${non_reimbursable_yes}    Prepaid (Non-Reimbursable)
+${non_reimbursable_no}    Reimbursable
+${billable_yes}    Billable
+${billable_no}    Non-Billable
+# Invalid Values
+${invalid_project}    Anonymous Customer APAC : APAC Proj
+${invalid_client}    Anonymous Customer APAC
+${invalid_department}    Depart Invalid - Headquaters 01
+${invalid_class}    Class Invalid - Headquaters
+${invalid_location}    Loca Invalid - Headquaters
+# Custom Values
+${custom_department}    Depart custom
+${custom_class}    Class custom
+${custom_location}    Location custom
+# Default Values
+${default_department}    Depart Default
+${default_location}    Location Default
+# Tax Code
+${tax_code}       TC-AU
+
+*** Test Cases ***
+TCA0_Basic flow (B) - Export report with the report owner role (0-sanityCheck)
+    [Documentation]    Pending for bug: https://trinet.atlassian.net/browse/ECDEV-5716 / smoke test
+    [Tags]    Smoke Testing    Export Netsuite    Suites Export Reports    Completed    Pending ECDEV-5716
+    Login Netsute Page    ${netsuite_user_id}    ${netsuite_password}
+    Check And Delete Exist Transactions    Report for ${user_owner}    Transactions    Employees    Enter Expense Reports    List    # Delete exist netsuite reports
+    Logout Netsuite Page
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Remove All Dashboard Alerts
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Wait Until Page Load    Empty category in Integration mapping
+    Synces Integration Data    ${netsuite}    ${netsuite_account_id}    ${user_owner_fullname}    ${netsuite}'s metadata data (${netsuite_account_id}) is syncing.    ${EMPTY}    #${netsuite}'s employees and vendor taxcodes (${netsuite_account_id}) are syncing.
+    Wait Until Page Contains Element    xpath=.//div[@class="lhv-tbody viewport"]    ${TIMEWAIT}    # Wait table mapping displayed
+    Select Category To Mapping    Mileage    Mileage
+    Select Category To Mapping    Parking    Parking
+    Select Main Menu    reports    create
+    Click Element    id=btnCreateReport
+    Wait Until Expense Active Page Load
+    Create Expense And Input Detail Values    ${EMPTY}    the first expense    Mileage    ${EMPTY}    500    ${EMPTY}
+    ...    ${EMPTY}    ${valid_client}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    Engineering : Quality Assurance    ${EMPTY}    ${billable_yes}    ${valid_class} : New Business    ${EMPTY}    ${valid_location}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Expense And Input Detail Values    ${EMPTY}    the second expense    Travel    ${EMPTY}    500    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${billable_no}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Expense And Input Detail Values    ${EMPTY}    the third expense    Travel    ${EMPTY}    500    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${billable_yes}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    ${total_amount}=    Get Text    xpath=.//strong[@class='amount']
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Click Button    id=submitExport
+    Verify Message Export To Integration    Exported Successfully.
+    Page Should Contain Element    xpath=.//i[text()='Submitted']
+    Page Should Contain Element    xpath=.//div[@id='approvalHistoryCont']//li[contains(text(),'${user_owner_fullname} exported to ${netsuite}')]
+    Login Netsute Page    ${netsuite_user_id}    ${netsuite_password}
+    Select Netsuite Menu    Transactions    Employees    Enter Expense Reports    List
+    ${ns_report_row}=    Get Id Tr Row Transactions    Report for ${user_owner}
+    Log    ${ns_report_row}
+    Verify Netsuite Employee    ${netsuite_full_name}
+    Page Should Contain Element    xpath=.//table/tbody/tr[@id='${ns_report_row}']/td[text()='${total_amount}']    #${total_amount}
+    Select Netsuite Transactions Link    ${ns_report_row}    Edit
+    # Verify row 01 - First expense
+    Wait Until Page Contains Element    id=expense_row_1    ${TIMEWAIT}
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Memo    the first expense (500 miles)
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Category    Mileage
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Amount    280.00
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Customer    ${valid_client}
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Department    Engineering : Quality Assurance
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Billable    Yes
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Class    ${valid_class} : New Business
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Location    ${valid_location}
+    # Verify row 02 - First Expense
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Billable    None    # Verify values is empty
+    # Verify row 3 - Third expense
+    # Receipt = Yes >>> not handle yet
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Customer    None    # Verify client & project
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Department    None
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Billable    Yes
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Class    None
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Location    None
+
+TCA1_Export all expenses to employee center with the Netsuite administrator role (A1) - (1-High)
+    [Documentation]    Export all expenses to employee center with the Netsuite administrator role
+    [Tags]    Export Netsuite    Suites Export Reports    Completed    Not Mailinator
+    Login Netsute Page    ${netsuite_user_id}    ${netsuite_password}
+    Check And Delete Exist Transactions    ${report_approve_name}    Transactions    Employees    Enter Expense Reports    List    # Delete exist netsuite reports
+    Logout Netsuite Page
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Remove All Dashboard Alerts
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    ${value}    Run Keyword And Return Status    Page Should Contain Link    link=${report_approve_name}
+    Run keyword If    ${value}    Log    An approve report existed.    ELSE    Create New Approve Report    ${report_approve_name}
+    ...    ${user_comad}    ${user_owner}
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Wait Until Page Load    Empty category in Integration mapping
+    Synces Integration Data    ${netsuite}    ${netsuite_account_id}    ${user_owner_fullname}    ${netsuite}'s metadata data (${netsuite_account_id}) is syncing.    ${EMPTY}    #${netsuite}'s employees and vendor taxcodes (${netsuite_account_id}) are syncing.
+    Wait Until Page Contains Element    xpath=.//div[@class="lhv-tbody viewport"]    ${TIMEWAIT}    # Wait table mapping displayed
+    Select Category To Mapping    Hotels    Hotel
+    Select Category To Mapping    Meals    Meals & Entertainment
+    Click Ec Link    companies    manage_users    ${EMPTY}
+    Assign User License    ${user_comad}    ${EMPTY}
+    Select Main Menu    reports    approval
+    #Wait Until Report Page Load
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    Page Should Contain Link    link=${report_approve_name}
+    Click Link    link=${report_approve_name}
+    Wait Until Report Detail Page Load
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Click Button    id=submitExport
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]    ${TIMEWAIT}
+    Run Keyword If    ${value}    Click Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]//div[@id='btnAllowReSubmit']
+    Verify Message Export To Integration    Exported Successfully.
+    Wait Until Page Contains Element    xpath=.//i[text()='Approved']    ${TIMEMAX}
+    Page Should Contain Element    xpath=.//div[@id='approvalHistoryCont']//li[contains(text(),'${user_owner_fullname} exported to ${netsuite}')]
+    Login Netsute Page    ${netsuite_user_id}    ${netsuite_password}
+    Select Netsuite Menu    Transactions    Employees    Enter Expense Reports    List
+    ${ns_report_row}=    Get Id Tr Row Transactions    ${report_approve_name}
+    Log    ${ns_report_row}
+    Verify Netsuite Employee    ${netsuite_full_name}
+    Page Should Contain Element    xpath=.//table/tbody/tr[@id='${ns_report_row}']/td[text()='12.00']
+    Select Netsuite Transactions Link    ${ns_report_row}    Edit
+    # Verify row 01 - Ex_1st
+    Wait Until Page Contains Element    id=expense_row_1    ${TIMEWAIT}
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_6    Memo    Ex_1st
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_6    Category    Hotel
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_6    Amount    2.00
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_6    Customer    ${valid_client}
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_6    Department    ${valid_department}
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_6    Billable    Yes
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_6    Class    ${valid_class}
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_6    Location    ${valid_location}
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_5    Non-reimbursable    Yes
+    # Verify row 02 - Ex_2nd
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_5    Memo    Ex_2nd
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_5    Category    Meals & Entertainment
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_5    Amount    3.00
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_5    Billable    None
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_5    Non-reimbursable    Yes
+    # Verify row 3 - Ex_3rd
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_4    Memo    Ex_3rd
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_4    Category    Hotel
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_4    Amount    2.00
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_4    Customer    None    # Verify client & project
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_4    Department    None
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_4    Billable    Yes
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_4    Class    None
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_4    Location    None
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_4    Non-reimbursable    Yes
+    # Verify row 4 - Ex_4th
+    # Receipt = Yes >>> not handle yet
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Memo    Ex_4th
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Category    Hotel
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Amount    3.00
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Customer    ${valid_client}    # Verify client & project
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Department    ${valid_department}
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Billable    Yes
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Class    ${valid_class}
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Location    ${valid_location}
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Non-reimbursable    None
+    # Verify row 5 - Ex_5th
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Memo    Ex_5th
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Category    Meals & Entertainment
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Amount    3.00
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Billable    None
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Non-reimbursable    None
+    # Verify row 6 - Ex_6th
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Memo    Ex_6th
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Category    Hotel
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Amount    6.00
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Customer    None    # Verify client & project
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Department    None
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Billable    Yes
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Class    None
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Location    None
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Non-reimbursable    None
+
+AaaAAAA
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Create New Approve Report    ${report_approve_name}    ${user_comad}    ${user_owner}
+
+TCA2_Export Multi-Entry Based On Reimbursable with the Netsuite administrator role (A2) - (1-High)
+    [Documentation]    Export Multi-Entry Based On Reimbursable with the Netsuite administrator role
+    ...    NOTE: Add ${user_owner} & ${user_comad} as netsuite's employee with role: Administrator
+    ...    BUG FIXED : https://trinet.atlassian.net/browse/ECDEV-6001
+    [Tags]    Export Netsuite    Suites Export Reports    Completed    Not Mailinator
+    Login Netsute Page    ${netsuite_user_id}    ${netsuite_password}
+    Check And Delete Exist Transactions    ${report_approve_name}    Transactions    Employees    Enter Expense Reports    List    # Delete exist netsuite reports
+    Check And Delete Exist Transactions    ${report_approve_name}    Transactions    Purchases/Vendors    Enter Bills    List    # Delete exist netsuite bills
+    Logout Netsuite Page
+    Login Netsute Page    ${user_comad}    ${pass_general}
+    Check And Delete Exist Transactions    ${report_approve_name}    Transactions    Employees    Enter Expense Reports    List    # Delete exist netsuite reports
+    Check And Delete Exist Transactions    ${report_approve_name}    Transactions    Purchases/Vendors    Enter Bills    List    # Delete exist netsuite bills
+    Logout Netsuite Page
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Remove All Dashboard Alerts
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    ${value}    Run Keyword And Return Status    Page Should Contain Link    link=${report_approve_name}
+    Run keyword If    ${value}    Log    An approve report existed.    ELSE    Create New Approve Report    ${report_approve_name}
+    ...    ${user_comad}    ${user_owner}
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Select Checkbox Submit Form    ${netsuite}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    Select    ${EMPTY}
+    Click Element    xpath=.//*[@id='${netsuite}Integration']//button[contains(.,"Save")]
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Wait Until Page Load    Empty category in Integration mapping
+    Synces Integration Data    ${netsuite}    ${netsuite_account_id}    ${user_owner_fullname}    ${netsuite}'s metadata data (${netsuite_account_id}) is syncing.    ${EMPTY}    #${netsuite}'s employees and vendor taxcodes (${netsuite_account_id}) are syncing.
+    Wait Until Page Contains Element    xpath=.//div[@class="lhv-tbody viewport"]    ${TIMEWAIT}    # Wait table mapping displayed
+    Select Category To Mapping    Hotels    Hotel
+    Select Category To Mapping    Meals    Meals & Entertainment
+    Click Ec Link    companies    manage_users    ${EMPTY}
+    Assign User License    ${user_comad}    ${EMPTY}
+    Select Main Menu    reports    approval
+    #Wait Until Report Page Load
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    Page Should Contain Link    link=${report_approve_name}
+    Click Link    link=${report_approve_name}
+    Wait Until Report Detail Page Load
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Click Button    id=submitExport
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]    ${TIMEWAIT}
+    Run Keyword If    ${value}    Click Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]//div[@id='btnAllowReSubmit']
+    # SECOND PAGE
+    Wait Until Page Contains Element    id=TitleReimbursable    ${TIMEOUT}
+    Wait Until Page Contains    Reimbursable Expenses
+    Verify Expense In Reimbursable Panel    gridNonReimbursable    Ex_1st
+    Verify Expense In Reimbursable Panel    gridNonReimbursable    Ex_2nd
+    Verify Expense In Reimbursable Panel    gridNonReimbursable    Ex_3rd
+    Verify Expense In Reimbursable Panel    gridReimbursable    Ex_4th
+    Verify Expense In Reimbursable Panel    gridReimbursable    Ex_5th
+    Verify Expense In Reimbursable Panel    gridReimbursable    Ex_6th
+    # Select vendor is "ACOM Business Solutions"
+    Select Dropdown With Input Text    ddlExport_NR_To_chzn    ACOM Business Solutions
+    Click Element    id=submitReportBtn
+    #Verify Message Export To Integration    Export report to Netsuite.
+    # BUG FIXED : https://trinet.atlassian.net/browse/ECDEV-6001
+    # CAN'T EXPORT BILLABLE TO NETSUITE
+    Verify Message Export To Integration    Exported Successfully.
+    Wait Until Page Contains Element    xpath=.//i[text()='Approved']    ${TIMEMAX}
+    #Page Should Contain Element    xpath=.//div[@id='approvalHistoryCont']//li[contains(text(),'${user_owner_fullname} exported to ${netsuite}')]
+    Login Netsute Page    ${netsuite_user_id}    ${netsuite_password}
+    Select Netsuite Menu    Transactions    Employees    Enter Expense Reports    List
+    ${ns_report_row}=    Get Id Tr Row Transactions    ${report_approve_name}
+    Log    ${ns_report_row}
+    Verify Netsuite Employee    ${netsuite_full_name}
+    Page Should Contain Element    xpath=.//table/tbody/tr[@id='${ns_report_row}']/td[text()='12.00']
+    Select Netsuite Transactions Link    ${ns_report_row}    Edit
+    Wait Until Page Contains Element    id=expense_row_1    ${TIMEWAIT}
+    # Verify row 4 - Ex_4th
+    # Receipt = Yes >>> not handle yet
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Memo    Ex_4th
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Category    Hotel
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Amount    3.00
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Customer    ${valid_client}    # Verify client & project
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Department    ${valid_department}
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Billable    Yes
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Class    ${valid_class}
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Location    ${valid_location}
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Non-reimbursable    None
+    # Verify row 5 - Ex_5th
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Memo    Ex_5th
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Category    Meals & Entertainment
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Amount    3.00
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Billable    None
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Non-reimbursable    None
+    # Verify row 6 - Ex_6th
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Memo    Ex_6th
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Category    Hotel
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Amount    6.00
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Customer    None    # Verify client & project
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Department    None
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Billable    Yes
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Class    None
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Location    None
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Non-reimbursable    None
+    # Verify BILL
+    Select Netsuite Menu    Transactions    Purchases/Vendors    Enter Bills    List
+    ${ns_report_row}=    Get Id Tr Row Transactions    ${report_approve_name}
+    Log    ${ns_report_row}
+    Page Should Contain Element    xpath=.//table/tbody/tr[@id='${ns_report_row}']/td[text()='7.00']
+    Select Netsuite Transactions Link    ${ns_report_row}    Edit
+    # Verify row 01 - Ex_1st
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_3    Memo    Ex_1st
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_3    Amount    2.00
+    # BUG HERE Verify Expense Bills Values In Netsuite By Row Id    expense_row_3    Customer    ${valid_client}
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_3    Department    ${valid_department}
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_3    Billable    Yes
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_3    Class    ${valid_class}
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_3    Location    ${valid_location}
+    #Verify Expense Bills Values In Netsuite By Row Id    expense_row_3    Non-reimbursable    Yes
+    # Verify row 02 - Ex_2nd
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_2    Memo    Ex_2nd
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_2    Amount    3.00
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_2    Billable    None
+    #Verify Expense Bills Values In Netsuite By Row Id    expense_row_2    Non-reimbursable    Yes
+    # Verify row 3 - Ex_3rd
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_1    Memo    Ex_3rd
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_1    Amount    2.00
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_1    Customer    None    # Verify client & project
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_1    Department    None
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_1    Billable    Yes
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_1    Class    None
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_1    Location    None
+    #Verify Expense Bills Values In Netsuite By Row Id    expense_row_1    Non-reimbursable    Yes
+    Logout Netsuite Page
+    Login Netsute Page    ${user_comad}    ${pass_general}
+    Select Netsuite Menu    Transactions    Employees    Enter Expense Reports    List
+    ${ns_report_row}=    Get Id Tr Row Transactions    ${report_approve_name}
+    Log    ${ns_report_row}
+    Verify Netsuite Employee    ${user_comad_fullname} ${account_type}
+    Page Should Contain Element    xpath=.//table/tbody/tr[@id='${ns_report_row}']/td[text()='12.00']
+    Select Netsuite Transactions Link    ${ns_report_row}    Edit
+    # Verify row 4 - Ex_4th
+    # Receipt = Yes >>> not handle yet
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Memo    Ex_4th
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Category    Hotel
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Amount    3.00
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Customer    ${valid_client}    # Verify client & project
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Department    ${valid_department}
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Billable    Yes
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Class    ${valid_class}
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Location    ${valid_location}
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Non-reimbursable    None
+    # Verify row 5 - Ex_5th
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Memo    Ex_5th
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Category    Meals & Entertainment
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Amount    3.00
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Billable    None
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Non-reimbursable    None
+    # Verify row 6 - Ex_6th
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Memo    Ex_6th
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Category    Hotel
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Amount    6.00
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Customer    None    # Verify client & project
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Department    None
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Billable    Yes
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Class    None
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Location    None
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Non-reimbursable    None
+    # Verify BILL
+    Select Netsuite Menu    Transactions    Purchases/Vendors    Enter Bills    List
+    ${ns_report_row}=    Get Id Tr Row Transactions    ${report_approve_name}
+    Log    ${ns_report_row}
+    Page Should Contain Element    xpath=.//table/tbody/tr[@id='${ns_report_row}']/td[text()='7.00']
+    Select Netsuite Transactions Link    ${ns_report_row}    Edit
+    # Verify row 01 - Ex_1st
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_3    Memo    Ex_1st
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_3    Amount    2.00
+    # BUG HERE Verify Expense Bills Values In Netsuite By Row Id    expense_row_3    Customer    ${valid_client}
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_3    Department    ${valid_department}
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_3    Billable    Yes
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_3    Class    ${valid_class}
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_3    Location    ${valid_location}
+    #Verify Expense Bills Values In Netsuite By Row Id    expense_row_3    Non-reimbursable    Yes
+    # Verify row 02 - Ex_2nd
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_2    Memo    Ex_2nd
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_2    Amount    3.00
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_2    Billable    None
+    #Verify Expense Bills Values In Netsuite By Row Id    expense_row_2    Non-reimbursable    Yes
+    # Verify row 3 - Ex_3rd
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_1    Memo    Ex_3rd
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_1    Amount    2.00
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_1    Customer    None    # Verify client & project
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_1    Department    None
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_1    Billable    Yes
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_1    Class    None
+    Verify Expense Bills Values In Netsuite By Row Id    expense_row_1    Location    None
+    #Verify Expense Bills Values In Netsuite By Row Id    expense_row_1    Non-reimbursable    Yes
+
+TCA3_Export Multi-Entry Based On Reimbursable with the Netsuite employee role (A3) - (2-Medium)
+    [Documentation]    Export Multi-Entry Based On Reimbursable with the Netsuite employee role
+    ...    NOTE IMPORTANT: Please add new employee"${user_myapprover_A}= ec_myapprover@yahoo.com" as role: Accountant before run this case
+    ...    PENDING For Bug : https://trinet.atlassian.net/browse/ECDEV-6001
+    [Tags]    Export Netsuite    Suites Export Reports    Pending ECDEV-6080
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    ${value}    Run Keyword And Return Status    Page Should Contain Link    link=${report_approve_name}
+    Run keyword If    ${value}    Log    An approve report existed.    ELSE    Create New Approve Report    ${report_approve_name}
+    ...    ${user_comad}    ${user_owner}
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account    ${user_myapprover_A}    ${pass_general}    ${netsuite_account_id}
+    Select Checkbox Submit Form    ${netsuite}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    Select    ${EMPTY}
+    Click Element    xpath=.//*[@id='${netsuite}Integration']//button[contains(.,"Save")]
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Click Element    xpath=.//div[@id="${netsuite}Integration"]//span[text()='Close']
+    Click Ec Link    companies    manage_users    ${EMPTY}
+    Assign User License    ${user_comad}    ${EMPTY}
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    Wait Until Page Contains    ${report_approve_name}    ${TIMEWAIT}
+    Page Should Contain Link    link=${report_approve_name}
+    Click Link    link=${report_approve_name}
+    Wait Until Report Detail Page Load
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Click Button    id=submitExport
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]    ${TIMEWAIT}
+    Run Keyword If    ${value}    Click Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]//div[@id='btnAllowReSubmit']
+    # SECOND PAGE
+    Wait Until Page Contains Element    id=TitleReimbursable
+    Wait Until Page Contains    Reimbursable Expenses    ${TIMEOUT}
+    Verify Expense In Reimbursable Panel    gridNonReimbursable    Ex_1st
+    Verify Expense In Reimbursable Panel    gridNonReimbursable    Ex_2nd
+    Verify Expense In Reimbursable Panel    gridNonReimbursable    Ex_3rd
+    Verify Expense In Reimbursable Panel    gridReimbursable    Ex_4th
+    Verify Expense In Reimbursable Panel    gridReimbursable    Ex_5th
+    Verify Expense In Reimbursable Panel    gridReimbursable    Ex_6th
+    Select Dropdown With Input Text    ddlExport_NR_To_chzn    Default Tax Agency SG    # Valid Vendor for myapprove: Default Tax Agency SG / LHV / Vendor - APAC
+    Click Element    id=submitReportBtn
+    # NOT RUN YET    Msg: Permission Violation: You need    the 'Transactions -> Expense Report' permission to access this page. Please contact your account administrator..
+    Verify Message Export To Integration    the 'Transactions -> Expense Report' permission to access this page. Please contact your account administrator..
+    #Verify Message Export To Integration    Permission Violation: You need    the 'Transactions -> Expense Report' permission to access this page. Please contact your account administrator..
+    # --------- BUG HERE: https://trinet.atlassian.net/browse/ECDEV-6080 -------- #
+
+TCA4_Export all expenses to employee center with the Netsuite employee role (A4) - (2-Medium)
+    [Documentation]    Export all expenses to employee center with the Netsuite employee role
+    [Tags]    Export Netsuite    Suites Export Reports    Pending ECDEV-6080
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Remove All Dashboard Alerts
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    ${value}    Run Keyword And Return Status    Page Should Contain Link    link=${report_approve_name}
+    Run keyword If    ${value}    Log    An approve report existed.    ELSE    Create New Approve Report    ${report_approve_name}
+    ...    ${user_comad}    ${user_owner}
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${user_myapprover_A}    ${pass_general}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Click Element    xpath=.//div[@id="${netsuite}Integration"]//span[text()='Close']
+    Click Ec Link    companies    manage_users    ${EMPTY}
+    Assign User License    ${user_comad}    ${EMPTY}
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    Page Should Contain Link    link=${report_approve_name}
+    Click Link    link=${report_approve_name}
+    Wait Until Report Detail Page Load
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Click Button    id=submitExport
+    # NOT RUN YET
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]    ${TIMEWAIT}
+    Run Keyword If    ${value}    Click Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]//div[@id='btnAllowReSubmit']
+    Verify Message Export To Integration    the 'Transactions -> Expense Report' permission to access this page. Please contact your account administrator..
+    #Verify Message Export To Integration    Permission Violation: You need    the 'Transactions -> Expense Report' permission to access this page. Please contact your account administrator..
+    # --------- BUG HERE: https://trinet.atlassian.net/browse/ECDEV-6080 -------- #
+
+TCA5_Report owner of the approved report doesn't exist on Netsuite company (A5) - (2-Medium)
+    [Documentation]    Export all expenses to employee center with the Netsuite employee role
+    ...    NOTE IMPORTANT: User ${user_nextapprover_B} does't exist on Netsuite Company
+    [Tags]    Export Netsuite    Suites Export Reports    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Remove All Dashboard Alerts
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    Create New Approve Report    ${report_approve_name_A5}    ${user_nextapprover_B}    ${user_owner}    # Free user doesn't exist on Netsuite Page
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Click Element    xpath=.//div[@id="${netsuite}Integration"]//span[text()='Close']
+    Click Ec Link    mappings    integration    ${EMPTY}
+    Synces Integration Data    ${netsuite}    ${netsuite_account_id}    ${user_owner_fullname}    ${netsuite}'s metadata data (${netsuite_account_id}) is syncing.    ${EMPTY}
+    Click Ec Link    companies    manage_users    ${EMPTY}
+    Assign User License    ${user_nextapprover_B}    ${EMPTY}
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    Page Should Contain Link    link=${report_approve_name_A5}
+    Click Link    link=${report_approve_name_A5}
+    Wait Until Report Detail Page Load
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Click Button    id=submitExport
+    # NOT RUN YET
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]    ${TIMEWAIT}
+    Run Keyword If    ${value}    Click Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]//div[@id='btnAllowReSubmit']
+    Verify Message Export To Integration    Report Owner: ${user_nextapprover_B} is not an active employee in your Netsuite company.
+
+TCA6_Report owner of the approved report is free user (A6) - (2-Medium)
+    [Documentation]    Report owner of the approved report is free user
+    ...    NOTE IMPORTANT: Precondition musst remove license of user ${user_bookkeeper_C} in CO
+    [Tags]    Export Netsuite    Suites Export Reports    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Remove All Dashboard Alerts
+    #Delete All Reports
+    #Delete All Current Expenses If Exists
+    Click Setting Menu    companies    manage_users    ${EMPTY}
+    Remove User License    ${user_bookkeeper_C}    ${EMPTY}
+    ${value}    Run Keyword And Return Status    Page Should Contain Link    link=${report_approve_name_A6}
+    Run keyword If    ${value}    Log    An approve report existed.    ELSE    Create New Approve Report    ${report_approve_name_A6}
+    ...    ${user_bookkeeper_C}    ${user_owner}    # Free user doesn't exist on Netsuite Page
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Click Element    xpath=.//div[@id="${netsuite}Integration"]//span[text()='Close']
+    #Click Ec Link    mappings    integration    ${EMPTY}
+    #Synces Integration Data    ${netsuite}    ${netsuite_account_id}    ${user_owner_fullname}    ${netsuite}'s metadata data (${netsuite_account_id}) is syncing.    ${EMPTY}
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    Page Should Contain Link    link=${report_approve_name_A6}
+    Click Link    link=${report_approve_name_A6}
+    Wait Until Report Detail Page Load
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Click Button    id=submitExport
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]    ${TIMEWAIT}
+    Run Keyword If    ${value}    Click Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]//div[@id='btnAllowReSubmit']
+    Wait Until Page Contains    Report Owner ${user_bookkeeper_C} could not be exported because the user does not have a license. Please add a license to this user    ${TIMEWAIT}
+    #Verify Page Show Message    error    Report Owner ${user_bookkeeper_C} could not be exported because the user does not have a license. Please add a license to this user \
+
+PENDING TCA7_Tax code for Bills (A7) - (1-High)
+    [Documentation]    Tax code for Bills
+    ...    PENDING: ENABLE TAXCODE IN EC & NETSUITE
+    [Tags]    Export Netsuite    Suites Export Reports    Pending Taxcode
+    Login Netsute Page    ${netsuite_user_id}    ${netsuite_password}
+    Check And Delete Exist Transactions    ${report_approve_name}    Transactions    Employees    Enter Expense Reports    List    # Delete exist netsuite reports
+    Check And Delete Exist Transactions    ${report_approve_name}    Transactions    Purchases/Vendors    Enter Bills    List    # Delete exist netsuite bills
+    Logout Netsuite Page
+    Login Netsute Page    ${user_comad}    ${pass_general}
+    Check And Delete Exist Transactions    ${report_approve_name}    Transactions    Employees    Enter Expense Reports    List    # Delete exist netsuite reports
+    Check And Delete Exist Transactions    ${report_approve_name}    Transactions    Purchases/Vendors    Enter Bills    List    # Delete exist netsuite bills
+    Logout Netsuite Page
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Remove All Dashboard Alerts
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    ${value}    Run Keyword And Return Status    Page Should Contain Link    link=${report_approve_name}
+    Run keyword If    ${value}    Log    An approve report existed.    ELSE    Create New Approve Report    ${report_approve_name}
+    ...    ${user_comad}    ${user_owner}
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Select Checkbox Submit Form    ${netsuite}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    Select    ${EMPTY}
+    Click Element    xpath=.//*[@id='${netsuite}Integration']//button[contains(.,"Save")]
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Wait Until Page Load    Empty category in Integration mapping
+    Synces Integration Data    ${netsuite}    ${netsuite_account_id}    ${user_owner_fullname}    ${netsuite}'s metadata data (${netsuite_account_id}) is syncing.    ${EMPTY}    #${netsuite}'s employees and vendor taxcodes (${netsuite_account_id}) are syncing.
+    Wait Until Page Contains Element    xpath=.//div[@class="lhv-tbody viewport"]    ${TIMEWAIT}    # Wait table mapping displayed
+    Select Category To Mapping    Hotels    Hotel
+    Select Category To Mapping    Meals    Meals & Entertainment
+    Click Ec Link    companies    manage_users    ${EMPTY}
+    Assign User License    ${user_comad}    ${EMPTY}
+    Select Main Menu    reports    approval
+    #Wait Until Report Page Load
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    Page Should Contain Link    link=${report_approve_name}
+    Click Link    link=${report_approve_name}
+    Wait Until Report Detail Page Load
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Click Button    id=submitExport
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]    ${TIMEWAIT}
+    Run Keyword If    ${value}    Click Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]//div[@id='btnAllowReSubmit']
+    # SECOND PAGE
+    Wait Until Page Contains Element    id=TitleReimbursable
+    Wait Until Page Contains    Reimbursable Expenses    ${TIMEOUT}
+    Verify Expense In Reimbursable Panel    gridNonReimbursable    Ex_1st
+    Verify Expense In Reimbursable Panel    gridNonReimbursable    Ex_2nd
+    Verify Expense In Reimbursable Panel    gridNonReimbursable    Ex_3rd
+    Verify Expense In Reimbursable Panel    gridReimbursable    Ex_4th
+    Verify Expense In Reimbursable Panel    gridReimbursable    Ex_5th
+    Verify Expense In Reimbursable Panel    gridReimbursable    Ex_6th
+    # Default accounts payable vendor is "ACOM Business Solutions"
+    #Select Dropdown With Input Text    ddlExport_NR_To_chzn    ACOM Business Solutions
+    Click Element    id=submitReportBtn
+    Verify Message Export To Integration    Export report to Netsuite.
+    # Not yet DONE
+
+PENDING ENABLE CHECKBOX SUPERVISOR TCA8_Auto checking Supervisor Approval check-box for the approval report (A8) - (1-High)
+    [Documentation]    Auto checking Supervisor Approval check-box for the approval report
+    [Tags]    Export Netsuite    Suites Export Reports
+    Login Netsute Page    ${netsuite_user_id}    ${netsuite_password}
+    Check And Delete Exist Transactions    ${report_approve_name}    Transactions    Employees    Enter Expense Reports    List    # Delete exist netsuite reports
+    Select Netsuite Menu    Lists    Employees    Employees    ${EMPTY}
+    Add Netsuite Supervisor    ${netsuite_user_id}    APAC
+    Verify Netsuite Alert Message Display    Confirmation    Employee successfully Saved
+    Logout Netsuite Page
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Remove All Dashboard Alerts
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    ${value}    Run Keyword And Return Status    Page Should Contain Link    link=${report_approve_name}
+    Run keyword If    ${value}    Log    An approve report existed.    ELSE    Create New Approve Report    ${report_approve_name}
+    ...    ${user_comad}    ${user_owner}
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Click Element    xpath=.//div[@id="${netsuite}Integration"]//span[text()='Close']
+    Click Ec Link    mappings    integration    ${EMPTY}
+    Synces Integration Data    ${netsuite}    ${netsuite_account_id}    ${user_owner_fullname}    ${netsuite}'s metadata data (${netsuite_account_id}) is syncing.    ${EMPTY}
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    Page Should Contain Link    link=${report_approve_name}
+    Click Link    link=${report_approve_name}
+    Wait Until Report Detail Page Load
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Click Button    id=submitExport
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]    ${TIMEWAIT}
+    Run Keyword If    ${value}    Click Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]//div[@id='btnAllowReSubmit']
+    Verify Message Export To Integration    Exported Successfully.
+    Log Out Expense Cloud
+    Login Netsute Page    ${netsuite_user_id}    ${netsuite_password}
+    Select Netsuite Menu    Transactions    Employees    Enter Expense Reports    List
+    ${ns_report_row}=    Get Id Tr Row Transactions    ${report_approve_name}
+    Log    ${ns_report_row}
+    Verify Netsuite Employee    ${netsuite_full_name}
+    Select Netsuite Transactions Link    ${ns_report_row}    View
+    # Set Supervisor Empty
+    Wait Until Page Contains Element    id=supervisorapproval_fs    ${TIMEWAIT}    # Wait Checkbox supervisor
+    Page Should Contain Element    xpath=.//span[@id='supervisorapproval_fs'][@class='checkbox_read_ck']    # Checkbox "Supervisor Approval" is checked
+    #Wait Until Page Contains Element    id=supervisorapproval_fs_inp
+    #Checkbox Should Be Selected    id=supervisorapproval_fs_inp
+    #Add Netsuite Supervisor    ${netsuite_user_id}    ${EMPTY}
+    #Verify Netsuite Alert Message Display    Confirmation    Employee successfully Saved
+
+TCA9_Export approved report to user never has supervisor approval (A9) - (1-High)
+    [Documentation]    Export approved report to user never has supervisor approval
+    [Tags]    Export Netsuite    Suites Export Reports    Completed    Not Mailinator
+    Login Netsute Page    ${netsuite_user_id}    ${netsuite_password}
+    Check And Delete Exist Transactions    ${report_approve_name}    Transactions    Employees    Enter Expense Reports    List    # Delete exist netsuite reports
+    Select Netsuite Menu    Lists    Employees    Employees    ${EMPTY}
+    # Remove supervisor with empty value
+    Add Netsuite Supervisor    ${netsuite_user_id}    ${EMPTY}    # Remove supervisor
+    Verify Netsuite Alert Message Display    Confirmation    Employee successfully Saved
+    Logout Netsuite Page
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Remove All Dashboard Alerts
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    ${value}    Run Keyword And Return Status    Page Should Contain Link    link=${report_approve_name}
+    Run keyword If    ${value}    Log    An approve report existed.    ELSE    Create New Approve Report    ${report_approve_name}
+    ...    ${user_comad}    ${user_owner}
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Click Element    xpath=.//div[@id="${netsuite}Integration"]//span[text()='Close']
+    Click Ec Link    mappings    integration    ${EMPTY}
+    Synces Integration Data    ${netsuite}    ${netsuite_account_id}    ${user_owner_fullname}    ${netsuite}'s metadata data (${netsuite_account_id}) is syncing.    ${EMPTY}
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    Page Should Contain Link    link=${report_approve_name}
+    Click Link    link=${report_approve_name}
+    Wait Until Report Detail Page Load
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Click Button    id=submitExport
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]    ${TIMEWAIT}
+    Run Keyword If    ${value}    Click Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]//div[@id='btnAllowReSubmit']
+    Verify Message Export To Integration    Exported Successfully.
+    Log Out Expense Cloud
+    Login Netsute Page    ${netsuite_user_id}    ${netsuite_password}
+    Select Netsuite Menu    Transactions    Employees    Enter Expense Reports    List
+    ${ns_report_row}=    Get Id Tr Row Transactions    ${report_approve_name}
+    Log    ${ns_report_row}
+    Verify Netsuite Employee    ${netsuite_full_name}
+    Select Netsuite Transactions Link    ${ns_report_row}    View
+    Wait Until Page Contains Element    id=supervisorapproval_fs    ${TIMEWAIT}    # Wait Checkbox supervisor
+    Page Should Contain Element    xpath=.//span[@id='supervisorapproval_fs'][@class='checkbox_read_unck']    # Checkbox "Supervisor Approval" is unchecked
+
+TCA10_Export Customer Department, Location, Class to oneworld Netsuite company (A10) - (1-High)
+    [Documentation]    Export Customer Department, Location, Class to oneworld Netsuite company
+    [Tags]    Export Netsuite    Suites Export Reports    Completed    Not Mailinator
+    Login Netsute Page    ${netsuite_user_id}    ${netsuite_password}
+    Check And Delete Exist Transactions    ${report_approve_name_A10}    Transactions    Employees    Enter Expense Reports    List    # Delete exist netsuite reports
+    Logout Netsuite Page
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Remove All Dashboard Alerts
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Wait Until Page Load    Empty category in Integration mapping
+    Synces Integration Data    ${netsuite}    ${netsuite_account_id}    ${user_owner_fullname}    ${netsuite}'s metadata data (${netsuite_account_id}) is syncing.    ${EMPTY}    #${netsuite}'s employees and vendor taxcodes (${netsuite_account_id}) are syncing.
+    Wait Until Page Contains Element    xpath=.//div[@class="lhv-tbody viewport"]    ${TIMEWAIT}    # Wait table mapping reload & display
+    Select Category To Mapping    Hotels    Hotel
+    Select Category To Mapping    Miscellaneous    Parking
+    Select Main Menu    expenses    active
+    Wait Until Expense Active Page Load
+    Create Expense And Input Detail Values    ${EMPTY}    The first expense_1st    Hotels    ${EMPTY}    2    ${EMPTY}
+    ...    ${EMPTY}    ${valid_client}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${valid_department}    ${EMPTY}    ${billable_yes}    ${valid_class}    ${EMPTY}    ${valid_location}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Expense And Input Detail Values    ${EMPTY}    The second expense_2nd    Miscellaneous    ${EMPTY}    3    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${billable_no}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Expense And Input Detail Values    ${EMPTY}    The third expense_3rd    Hotels    ${EMPTY}    2    ${EMPTY}
+    ...    Invalid Ns Proj    Invalid Ns Client    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${valid_department}    ${EMPTY}    ${billable_yes}    ${valid_class}    ${EMPTY}    ${valid_location}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Report With Input Report Name    ${report_approve_name_A10}    ${EMPTY}    ${EMPTY}    ${EMPTY}    Is    ${EMPTY}
+    Wait Until Report Detail Page Load
+    ${total_amount}=    Get Total Amount Of Report Detail
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Click Button    id=submitExport
+    Verify Message Export To Integration    Exported Successfully.
+    Login Netsute Page    ${netsuite_user_id}    ${netsuite_password}
+    Select Netsuite Menu    Transactions    Employees    Enter Expense Reports    List
+    ${ns_report_row}=    Get Id Tr Row Transactions    ${report_approve_name_A10}
+    Log    ${ns_report_row}
+    Verify Netsuite Employee    ${netsuite_full_name}
+    Page Should Contain Element    xpath=.//table/tbody/tr[@id='${ns_report_row}']/td[text()='${total_amount}']
+    Select Netsuite Transactions Link    ${ns_report_row}    Edit
+    # Verify row 01 - First expense
+    Wait Until Page Contains Element    id=expense_row_1    ${TIMEWAIT}
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Memo    The first expense_1st
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Category    Hotel
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Amount    2.00
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Customer    ${valid_client}
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Department    ${valid_department}
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Billable    Yes
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Class    ${valid_class}
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_3    Location    ${valid_location}
+    # Verify row 02 - First Expense
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Memo    The second expense_2nd
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Category    Parking
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Amount    3.00
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Billable    None    # Verify values is empty
+    # Verify row 3 - Third expense
+    # Receipt = Yes >>> not handle yet
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Memo    The third expense_3rd
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Category    Hotel
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Amount    2.00
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Customer    None    # Verify client & project
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Department    ${valid_department}
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Billable    Yes
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Class    ${valid_class}
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Location    ${valid_location}
+
+TCA11_Incorrect customer reference for entity (A11) - (1-High)
+    [Documentation]    Incorrect customer reference for entity
+    [Tags]    Export Netsuite    Suites Export Reports    Completed    Not Mailinator
+    Login Netsute Page    ${netsuite_user_id}    ${netsuite_password}
+    Check And Delete Exist Transactions    ${report_approve_name_A11}    Transactions    Employees    Enter Expense Reports    List    # Delete exist netsuite reports
+    Logout Netsuite Page
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Remove All Dashboard Alerts
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Wait Until Page Load    Empty category in Integration mapping
+    Synces Integration Data    ${netsuite}    ${netsuite_account_id}    ${user_owner_fullname}    ${netsuite}'s metadata data (${netsuite_account_id}) is syncing.    ${EMPTY}    #${netsuite}'s employees and vendor taxcodes (${netsuite_account_id}) are syncing.
+    Wait Until Page Contains Element    xpath=.//div[@class="lhv-tbody viewport"]    ${TIMEWAIT}    # Wait table mapping displayed
+    Select Category To Mapping    Hotels    Hotel
+    Select Category To Mapping    Miscellaneous    Parking
+    Select Main Menu    expenses    active
+    Wait Until Expense Active Page Load
+    Create Expense And Input Detail Values    ${EMPTY}    The first expense_1st    Hotels    ${EMPTY}    2    ${EMPTY}
+    ...    ${EMPTY}    ABC Co.    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    DeptTest    ${EMPTY}    ${billable_yes}    Test Class    ${EMPTY}    01 US - West Coast Warehouse
+    ...    ${EMPTY}    ${EMPTY}
+    Create Expense And Input Detail Values    ${EMPTY}    The second expense_2nd    Miscellaneous    ${EMPTY}    3    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${billable_no}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Expense And Input Detail Values    ${EMPTY}    The third expense_3rd    Hotels    ${EMPTY}    2    ${EMPTY}
+    ...    ${EMPTY}    ABC Co.    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    DeptTest    ${EMPTY}    ${billable_yes}    Test Class    ${EMPTY}    01 US - West Coast Warehouse
+    ...    ${EMPTY}    ${EMPTY}
+    Create Report With Input Report Name    ${report_approve_name_A11}    ${EMPTY}    ${EMPTY}    ${EMPTY}    Is    ${EMPTY}
+    Wait Until Report Detail Page Load
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Verify Warning & Tooltip Show In Expense Detail Page    The first expense_1st    Client    Cannot export this client to netsuite report
+    Verify Warning & Tooltip Show In Expense Detail Page    The third expense_3rd    Client    Cannot export this client to netsuite report
+    Click Button    id=submitExport
+    Verify Message Export To Integration    Invalid NetsuiteProject: 324 for NetsuiteEmployee: pcuy@lhv.vn.
+
+PENDING ECDEV-6080 TCA12_Export Clients by employee Netsuite account (A12) - (1 - High)
+    [Documentation]    Export Clients by employee Netsuite account
+    [Tags]    Export Netsuite    Suites Export Reports    Pending ECDEV-6080
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Click Setting Menu    settings    company    ${EMPTY}
+    Wait Until Page Contains Element    id=CompanyName    ${TIMEOUT}
+    #${adress}=    Get Text    id=CompanyAddress
+    #Run Keyword If    '${adress}' == '${EMPTY}'    Set Company Info    ${EMPTY}    ${EMPTY}    ${EMPTY}    76, CMT8
+    #...    NewYork    California    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    #...    ${EMPTY}
+    Set Company User Permissions    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    Check    # Set "Allow Users To Setup Their Own Integrations"
+    Click Button    id=btnSave
+    Verify Page Show Message    success    Company updated
+    Click Ec Link    companies    manage_users    ${EMPTY}
+    Assign User License    ${user_myapprover_A}    ${EMPTY}
+    Logout Expense Cloud
+    Log In    ${sever_test}    ${user_myapprover_A}    ${pass_general}
+    Remove All Dashboard Alerts
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account    ${user_myapprover_A}    ${pass_general}    ${netsuite_account_id}
+    Select Checkbox Submit Form    ${netsuite}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    Select    ${EMPTY}
+    Click Element    xpath=.//*[@id='${netsuite}Integration']//button[contains(.,"Save")]
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Click Element    xpath=.//div[@id="${netsuite}Integration"]//span[text()='Close']
+    Select Main Menu    reports    create
+    Click Element    id=btnCreateReport
+    Wait Until Expense Active Page Load
+    Input Text    xpath=.//textarea[@id='ReportNote']    Report to Netsuite
+    Create Expense And Input Detail Values    ${EMPTY}    the first expense    Mileage    ${EMPTY}    500    ${EMPTY}
+    ...    ${EMPTY}    ${valid_client}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    Engineering : Quality Assurance    ${EMPTY}    ${billable_yes}    ${valid_class} : New Business    ${EMPTY}    ${valid_location}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Expense And Input Detail Values    ${EMPTY}    the second expense    Travel    ${EMPTY}    500    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${billable_no}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Expense And Input Detail Values    ${EMPTY}    the third expense    Travel    ${EMPTY}    500    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${billable_yes}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_myapprover_A_fullname}
+    Click Button    id=submitExport
+    Verify Message Export To Integration    the 'Transactions -> Expense Report' permission to access this page. Please contact your account administrator..
+    #Verify Message Export To Integration    Permission Violation: You need    the 'Transactions -> Expense Report' permission to access this page. Please contact your account administrator..
+    # --------- BUG HERE: https://trinet.atlassian.net/browse/ECDEV-6080 -------- #
+
+TCA13_Incorrect customer for a certain employee in oneworld company (A13) - (1-High)
+    [Documentation]    Incorrect customer for a certain employee in oneworld company
+    [Tags]    Export Netsuite    Suites Export Reports    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Remove All Dashboard Alerts
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    ${value}    Run Keyword And Return Status    Page Should Contain Link    link=${invalid_report_approve_name}
+    Run keyword If    ${value}    Log    An approve report existed.    ELSE    Create Invalid Approve Report    ${invalid_report_approve_name}
+    ...    ${user_comad}    ${user_owner}
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Wait Until Page Load    Empty category in Integration mapping
+    Synces Integration Data    ${netsuite}    ${netsuite_account_id}    ${user_owner_fullname}    ${netsuite}'s metadata data (${netsuite_account_id}) is syncing.    ${EMPTY}    #${netsuite}'s employees and vendor taxcodes (${netsuite_account_id}) are syncing.
+    Wait Until Page Contains Element    xpath=.//div[@class="lhv-tbody viewport"]    ${TIMEWAIT}    # Wait table mapping reload & display
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Page Should Contain Link    link=${invalid_report_approve_name}
+    Click Link    link=${invalid_report_approve_name}
+    Wait Until Report Detail Page Load
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Verify Warning & Tooltip Show In Expense Detail Page    The first expense_1st    Client    Cannot export this client to netsuite report
+    Click Button    id=submitExport
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]    ${TIMEWAIT}
+    Run Keyword If    ${value}    Click Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]//div[@id='btnAllowReSubmit']
+    Verify Message Export To Integration    Invalid NetsuiteProject: ${invalid_project} for NetsuiteEmployee: ${user_comad}.
+
+TCA14_Incorrect project reference for entity (Project doesn't belong to subsidiary) (A14) - (1-High)
+    [Documentation]    Incorrect project reference for entity (Project doesn't belong to subsidiary)
+    [Tags]    Export Netsuite    Suites Export Reports    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Remove All Dashboard Alerts
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    ${value}    Run Keyword And Return Status    Page Should Contain Link    link=${invalid_report_approve_name}
+    Run keyword If    ${value}    Log    An approve report existed.    ELSE    Create Invalid Approve Report    ${invalid_report_approve_name}
+    ...    ${user_comad}    ${user_owner}
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Wait Until Page Load    Empty category in Integration mapping
+    Synces Integration Data    ${netsuite}    ${netsuite_account_id}    ${user_owner_fullname}    ${netsuite}'s metadata data (${netsuite_account_id}) is syncing.    ${EMPTY}    #${netsuite}'s employees and vendor taxcodes (${netsuite_account_id}) are syncing.
+    Wait Until Page Contains Element    xpath=.//div[@class="lhv-tbody viewport"]    ${TIMEWAIT}    # Wait table mapping reload & display
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Page Should Contain Link    link=${invalid_report_approve_name}
+    Click Link    link=${invalid_report_approve_name}
+    Wait Until Report Detail Page Load
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Verify Warning & Tooltip Show In Expense Detail Page    The first expense_1st    Project    Cannot export this project to netsuite report
+    Click Button    id=submitExport
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]    ${TIMEWAIT}
+    Run Keyword If    ${value}    Click Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]//div[@id='btnAllowReSubmit']
+    Verify Message Export To Integration    Invalid NetsuiteProject: ${invalid_project} for NetsuiteEmployee: ${user_comad}.
+
+TCA15_Incorrect class for a certain employee in oneworld company (A15) - (1-High)
+    [Documentation]    Incorrect class for a certain employee in oneworld company
+    [Tags]    Export Netsuite    Suites Export Reports    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Remove All Dashboard Alerts
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    ${value}    Run Keyword And Return Status    Page Should Contain Link    link=${invalid_report_approve_name}
+    Run keyword If    ${value}    Log    An approve report existed.    ELSE    Create Invalid Approve Report    ${invalid_report_approve_name}
+    ...    ${user_comad}    ${user_owner}
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Wait Until Page Load    Empty category in Integration mapping
+    Synces Integration Data    ${netsuite}    ${netsuite_account_id}    ${user_owner_fullname}    ${netsuite}'s metadata data (${netsuite_account_id}) is syncing.    ${EMPTY}    #${netsuite}'s employees and vendor taxcodes (${netsuite_account_id}) are syncing.
+    Wait Until Page Contains Element    xpath=.//div[@class="lhv-tbody viewport"]    ${TIMEWAIT}    # Wait table mapping reload & display
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Page Should Contain Link    link=${invalid_report_approve_name}
+    Click Link    link=${invalid_report_approve_name}
+    Wait Until Report Detail Page Load
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    #Verify Warning & Tooltip Show In Expense Detail Page    The first expense_1st    Project    Cannot export this project to netsuite report
+    Click Button    id=submitExport
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]    ${TIMEWAIT}
+    Run Keyword If    ${value}    Click Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]//div[@id='btnAllowReSubmit']
+    Verify Message Export To Integration    Invalid NetsuiteClass: ${invalid_class} for NetsuiteSubsidiary: APAC.
+
+TCA16_Incorrect department for a certain employee in oneworld company (A16) - (1-High)
+    [Documentation]    Incorrect department for a certain employee in oneworld company
+    [Tags]    Export Netsuite    Suites Export Reports    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Remove All Dashboard Alerts
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    ${value}    Run Keyword And Return Status    Page Should Contain Link    link=${invalid_report_approve_name}
+    Run keyword If    ${value}    Log    An approve report existed.    ELSE    Create Invalid Approve Report    ${invalid_report_approve_name}
+    ...    ${user_comad}    ${user_owner}
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Wait Until Page Load    Empty category in Integration mapping
+    Synces Integration Data    ${netsuite}    ${netsuite_account_id}    ${user_owner_fullname}    ${netsuite}'s metadata data (${netsuite_account_id}) is syncing.    ${EMPTY}    #${netsuite}'s employees and vendor taxcodes (${netsuite_account_id}) are syncing.
+    Wait Until Page Contains Element    xpath=.//div[@class="lhv-tbody viewport"]    ${TIMEWAIT}    # Wait table mapping reload & display
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Page Should Contain Link    link=${invalid_report_approve_name}
+    Click Link    link=${invalid_report_approve_name}
+    Wait Until Report Detail Page Load
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    #Verify Warning & Tooltip Show In Expense Detail Page    The first expense_1st    Project    Cannot export this project to netsuite report
+    Click Button    id=submitExport
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]    ${TIMEWAIT}
+    Run Keyword If    ${value}    Click Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]//div[@id='btnAllowReSubmit']
+    Verify Message Export To Integration    Invalid NetsuiteDepartment: ${invalid_department} for NetsuiteSubsidiary: APAC.
+
+TCA17_Incorrect location for a certain employee in oneworld company (A17) - (1-High)
+    [Documentation]    Incorrect location for a certain employee in oneworld company
+    [Tags]    Export Netsuite    Suites Export Reports    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Remove All Dashboard Alerts
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    ${value}    Run Keyword And Return Status    Page Should Contain Link    link=${invalid_report_approve_name}
+    Run keyword If    ${value}    Log    An approve report existed.    ELSE    Create Invalid Approve Report    ${invalid_report_approve_name}
+    ...    ${user_comad}    ${user_owner}
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Wait Until Page Load    Empty category in Integration mapping
+    Synces Integration Data    ${netsuite}    ${netsuite_account_id}    ${user_owner_fullname}    ${netsuite}'s metadata data (${netsuite_account_id}) is syncing.    ${EMPTY}    #${netsuite}'s employees and vendor taxcodes (${netsuite_account_id}) are syncing.
+    Wait Until Page Contains Element    xpath=.//div[@class="lhv-tbody viewport"]    ${TIMEWAIT}    # Wait table mapping reload & display
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Page Should Contain Link    link=${invalid_report_approve_name}
+    Click Link    link=${invalid_report_approve_name}
+    Wait Until Report Detail Page Load
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    #Verify Warning & Tooltip Show In Expense Detail Page    The first expense_1st    Project    Cannot export this project to netsuite report
+    Click Button    id=submitExport
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]    ${TIMEWAIT}
+    Run Keyword If    ${value}    Click Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]//div[@id='btnAllowReSubmit']
+    Verify Message Export To Integration    Invalid NetsuiteLocation: ${invalid_location} for NetsuiteSubsidiary: APAC.
+
+TCA18_Incorrect customer/project for a certain vendor in oneworld company (A18) - (1-High)
+    [Documentation]    Incorrect customer/project for a certain vendor in oneworld company
+    [Tags]    Export Netsuite    Suites Export Reports    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Remove All Dashboard Alerts
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    ${value}    Run Keyword And Return Status    Page Should Contain Link    link=${invalid_report_approve_name}
+    Run keyword If    ${value}    Log    An approve report existed.    ELSE    Create Invalid Approve Report    ${invalid_report_approve_name}
+    ...    ${user_comad}    ${user_owner}
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Select Checkbox Submit Form    ${netsuite}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    Select    ${EMPTY}
+    Click Element    xpath=.//*[@id='${netsuite}Integration']//button[contains(.,"Save")]
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Wait Until Page Load    Empty category in Integration mapping
+    Synces Integration Data    ${netsuite}    ${netsuite_account_id}    ${user_owner_fullname}    ${netsuite}'s metadata data (${netsuite_account_id}) is syncing.    ${EMPTY}    #${netsuite}'s employees and vendor taxcodes (${netsuite_account_id}) are syncing.
+    Wait Until Page Contains Element    xpath=.//div[@class="lhv-tbody viewport"]    ${TIMEWAIT}    # Wait table mapping displayed
+    Select Category To Mapping    Hotels    Hotel
+    Select Category To Mapping    Meals    Meals & Entertainment
+    Click Ec Link    companies    manage_users    ${EMPTY}
+    Assign User License    ${user_comad}    ${EMPTY}
+    Select Main Menu    reports    approval
+    #Wait Until Report Page Load
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    Page Should Contain Link    link=${invalid_report_approve_name}
+    Click Link    link=${invalid_report_approve_name}
+    Wait Until Report Detail Page Load
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Click Button    id=submitExport
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]    ${TIMEWAIT}
+    Run Keyword If    ${value}    Click Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]//div[@id='btnAllowReSubmit']
+    # SECOND PAGE
+    Wait Until Page Contains Element    id=TitleReimbursable    ${TIMEOUT}
+    Wait Until Page Contains    Reimbursable Expenses
+    Select Dropdown With Input Text    ddlExport_NR_To_chzn    ACOM Business Solutions
+    Verify Warning & Tooltip Show In Report Detail Second Page    The first expense_1st    Client    Cannot export this client to netsuite report
+    Click Element    id=submitReportBtn
+    Wait Until Report Detail Page Load
+    Verify Message Export To Integration    Invalid NetsuiteProject: ${invalid_project} for NetsuiteVendor: ACOM Business Solutions.
+
+TCA19_Incorrect department/location/class for a certain vendor in oneworld company (A19) - (1-High)
+    [Documentation]    Incorrect department/location/class for a certain vendor in oneworld company
+    [Tags]    Export Netsuite    Suites Export Reports    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Remove All Dashboard Alerts
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    ${value}    Run Keyword And Return Status    Page Should Contain Link    link=${invalid_report_approve_name}
+    Run keyword If    ${value}    Log    An approve report existed.    ELSE    Create Invalid Approve Report    ${invalid_report_approve_name}
+    ...    ${user_comad}    ${user_owner}
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Select Checkbox Submit Form    ${netsuite}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    Select    ${EMPTY}
+    Click Element    xpath=.//*[@id='${netsuite}Integration']//button[contains(.,"Save")]
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Wait Until Page Load    Empty category in Integration mapping
+    Synces Integration Data    ${netsuite}    ${netsuite_account_id}    ${user_owner_fullname}    ${netsuite}'s metadata data (${netsuite_account_id}) is syncing.    ${EMPTY}    #${netsuite}'s employees and vendor taxcodes (${netsuite_account_id}) are syncing.
+    Wait Until Page Contains Element    xpath=.//div[@class="lhv-tbody viewport"]    ${TIMEWAIT}    # Wait table mapping reload & display
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Page Should Contain Link    link=${invalid_report_approve_name}
+    Click Link    link=${invalid_report_approve_name}
+    Wait Until Report Detail Page Load
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    #Verify Warning & Tooltip Show In Expense Detail Page    The first expense_1st    Project    Cannot export this project to netsuite report
+    Click Button    id=submitExport
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]    ${TIMEWAIT}
+    Run Keyword If    ${value}    Click Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]//div[@id='btnAllowReSubmit']
+    # SECOND PAGE
+    Wait Until Page Contains Element    id=TitleReimbursable    ${TIMEOUT}
+    Wait Until Page Contains    Reimbursable Expenses
+    Select Dropdown With Input Text    ddlExport_NR_To_chzn    ACOM Business Solutions
+    Click Element    id=submitReportBtn
+    Wait Until Report Detail Page Load
+    Verify Message Export To Integration    Invalid NetsuiteClass: ${invalid_class} for NetsuiteSubsidiary: US - West.
+    Page Should Contain    Invalid NetsuiteDepartment: ${invalid_department} for NetsuiteSubsidiary: US - West.
+    Page Should Contain    Invalid NetsuiteLocation: ${invalid_location} for NetsuiteSubsidiary: US - West.
+
+TCA20_Invalid Department, Location, Class in the oneworld company (A20) - (2-Medium)
+    [Documentation]    Invalid Department, Location, Class in the oneworld company
+    [Tags]    Export Netsuite    Suites Export Reports    Completed    Not Mailinator
+    Login Netsute Page    ${netsuite_user_id}    ${netsuite_password}
+    Check And Delete Exist Transactions    Report for ${user_owner}    Transactions    Employees    Enter Expense Reports    List    # Delete exist netsuite reports
+    Logout Netsuite Page
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Remove All Dashboard Alerts
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Wait Until Page Load    Empty category in Integration mapping
+    Synces Integration Data    ${netsuite}    ${netsuite_account_id}    ${user_owner_fullname}    ${netsuite}'s metadata data (${netsuite_account_id}) is syncing.    ${EMPTY}    #${netsuite}'s employees and vendor taxcodes (${netsuite_account_id}) are syncing.
+    Wait Until Page Contains Element    xpath=.//div[@class="lhv-tbody viewport"]    ${TIMEWAIT}    # Wait table mapping displayed
+    Select Category To Mapping    Hotels    Hotel
+    Select Category To Mapping    Meals    Meals & Entertainment
+    Select Main Menu    reports    create
+    Click Element    id=btnCreateReport
+    Wait Until Expense Active Page Load
+    Create Expense And Input Detail Values    ${EMPTY}    the first expense    Hotels    ${EMPTY}    10    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${custom_department}    ${EMPTY}    ${billable_yes}    ${custom_class}    ${EMPTY}    ${custom_location}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Expense And Input Detail Values    ${EMPTY}    the second expense    Meals    ${EMPTY}    5    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${billable_no}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Click Button    id=submitExport
+    Verify Message Export To Integration    Exported Successfully.
+    ${total_amount}=    Get Total Amount Of Report Detail
+    Page Should Contain Element    xpath=.//i[text()='Submitted']
+    Page Should Contain Element    xpath=.//div[@id='approvalHistoryCont']//li[contains(text(),'${user_owner_fullname} exported to ${netsuite}')]
+    Login Netsute Page    ${netsuite_user_id}    ${netsuite_password}
+    Select Netsuite Menu    Transactions    Employees    Enter Expense Reports    List
+    ${ns_report_row}=    Get Id Tr Row Transactions    Report for ${user_owner}
+    Log    ${ns_report_row}
+    Verify Netsuite Employee    ${netsuite_full_name}
+    Page Should Contain Element    xpath=.//table/tbody/tr[@id='${ns_report_row}']/td[text()='${total_amount}']    #${total_amount}
+    Select Netsuite Transactions Link    ${ns_report_row}    Edit
+    # Verify row 01 - First expense
+    Wait Until Page Contains Element    id=expense_row_1    ${TIMEWAIT}
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Memo    the first expense
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Category    Hotel
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Amount    10.00
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Customer    None
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Department    ${default_department}
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Billable    Yes
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Class    None
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Location    ${default_location}
+    # Verify row 02 - First Expense
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Billable    None    # Verify values is empty
+
+PENDING NON ONEWORLD ACCOUNT TCA21_Turn Multi Currencies on from Netsuite site (A21) - (1-High)
+    [Documentation]    Turn Multi Currencies on from Netsuite site
+    [Tags]    Export Netsuite    Suites Export Reports    Pending
+    # Need account netsuite non oneworld
+    # Set Company Information
+
+TCA22_Base currency is not supported (A22) - (1-High)
+    [Documentation]    Base currency is not supported
+    ...    BUG: https://trinet.atlassian.net/browse/ECDEV-5721
+    [Tags]    Export Netsuite    Suites Export Reports    PENDING FOR BUG ECDEV-5721
+    Login Netsute Page    ${netsuite_user_id}    ${netsuite_password}
+    Check And Delete Exist Transactions    Export_report_to_Netsuite_A22    Transactions    Employees    Enter Expense Reports    List    # Delete exist netsuite reports
+    Logout Netsuite Page
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Remove All Dashboard Alerts
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Wait Until Page Load    Empty category in Integration mapping
+    Synces Integration Data    ${netsuite}    ${netsuite_account_id}    ${user_owner_fullname}    ${netsuite}'s metadata data (${netsuite_account_id}) is syncing.    ${EMPTY}    #${netsuite}'s employees and vendor taxcodes (${netsuite_account_id}) are syncing.
+    Wait Until Page Contains Element    xpath=.//div[@class="lhv-tbody viewport"]    ${TIMEWAIT}    # Wait table mapping displayed
+    Select Category To Mapping    Hotels    Hotel
+    Select Category To Mapping    Meals    Meals & Entertainment
+    Click Ec Link    expenses    active    ${EMPTY}
+    Wait Until Expense Active Page Load
+    Create Expense And Input Detail Values    ${EMPTY}    E_1    Hotels    ${EMPTY}    10    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    VND    ${EMPTY}    ${EMPTY}
+    ...    ${custom_department}    ${EMPTY}    ${billable_yes}    ${custom_class}    ${EMPTY}    ${custom_location}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Expense And Input Detail Values    ${EMPTY}    E_2    Meals    ${EMPTY}    20    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    VND    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${billable_no}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Report With Input Report Name    Export_report_to_Netsuite_A22    ${EMPTY}    ${EMPTY}    ${EMPTY}    Is    ${EMPTY}
+    Wait Until Report Detail Page Load
+    ${total_amount}=    Get Total Amount Of Report Detail
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Click Button    id=submitExport
+    Verify Message Export To Integration    Exported Successfully.
+    Page Should Contain Element    xpath=.//i[text()='Submitted']
+    Page Should Contain Element    xpath=.//div[@id='approvalHistoryCont']//li[contains(text(),'${user_owner_fullname} exported to ${netsuite}')]
+    Login Netsute Page    ${netsuite_user_id}    ${netsuite_password}
+    Select Netsuite Menu    Transactions    Employees    Enter Expense Reports    List
+    ${ns_report_row}=    Get Id Tr Row Transactions    Export_report_to_Netsuite_A22
+    Log    ${ns_report_row}
+    Verify Netsuite Employee    ${netsuite_full_name}
+    FAILED    # ----- https://trinet.atlassian.net/browse/ECDEV-5721 -----#
+    Page Should Contain Element    xpath=.//table/tbody/tr[@id='${ns_report_row}']/td[text()='0.00']    #${total_amount}
+    Select Netsuite Transactions Link    ${ns_report_row}    Edit
+    # Verify row 01 - First expense
+    Wait Until Page Contains Element    id=expense_row_1    ${TIMEWAIT}
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Memo    E_1
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Category    Hotel
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Amount    10.00
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Customer    None
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Department    ${default_department}
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Billable    Yes
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Class    None
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Location    ${default_location}
+    # Verify row 02 - First Expense
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Memo    E_2
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Category    Meals & Entertainment
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Amount    20.00
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Billable    None    # Verify values is empty
+
+PENDING NON ONEWORLD ACCOUNT TCA23_Turn Multi Currencies off from Netsuite site (A23) - (1-High)
+    [Documentation]    Turn Multi Currencies off from Netsuite site
+    [Tags]    Export Netsuite    Suites Export Reports    Pending
+    # Need account netsuite non oneworld
+    # Set Company Information
+
+TCA24_Export a report has total amount is negative (A24) - (2-Medium)
+    [Documentation]    Export a report has total amount is negative
+    ...    BUG CLOSED: https://trinet.atlassian.net/browse/ECDEV-6143
+    [Tags]    Export Netsuite    Suites Export Reports    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Remove All Dashboard Alerts
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Wait Until Page Load    Empty category in Integration mapping
+    Synces Integration Data    ${netsuite}    ${netsuite_account_id}    ${user_owner_fullname}    ${netsuite}'s metadata data (${netsuite_account_id}) is syncing.    ${EMPTY}    #${netsuite}'s employees and vendor taxcodes (${netsuite_account_id}) are syncing.
+    Wait Until Page Contains Element    xpath=.//div[@class="lhv-tbody viewport"]    ${TIMEWAIT}    # Wait table mapping displayed
+    Select Category To Mapping    Hotels    Hotel
+    Select Category To Mapping    Meals    Meals & Entertainment
+    Click Ec Link    expenses    active    ${EMPTY}
+    Wait Until Expense Active Page Load
+    Create Expense And Input Detail Values    ${EMPTY}    E_1    Hotels    ${EMPTY}    -10    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${custom_department}    ${EMPTY}    ${billable_yes}    ${custom_class}    ${EMPTY}    ${custom_location}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Expense And Input Detail Values    ${EMPTY}    E_2    Meals    ${EMPTY}    -20    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${billable_no}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    Select Checkbox    xpath=.//input[@class='lhv-table-select-all']
+    Click Element    id=btnCreateReport
+    Wait Until Report Detail Page Load
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Click Button    id=submitExport
+    Verify Message Export To Integration    Netsuite does not support negative reports.
+
+TCA25_Export a report contains the negative expenses and total amount is positive (A25) - (1-High)
+    [Documentation]    Export a report contains the negative expenses and total amount is positive
+    [Tags]    Export Netsuite    Suites Export Reports    Completed    Not Mailinator
+    Login Netsute Page    ${netsuite_user_id}    ${netsuite_password}
+    Check And Delete Exist Transactions    Export_report_to_Netsuite_A25    Transactions    Employees    Enter Expense Reports    List    # Delete exist netsuite reports
+    Logout Netsuite Page
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Remove All Dashboard Alerts
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Wait Until Page Load    Empty category in Integration mapping
+    Synces Integration Data    ${netsuite}    ${netsuite_account_id}    ${user_owner_fullname}    ${netsuite}'s metadata data (${netsuite_account_id}) is syncing.    ${EMPTY}    #${netsuite}'s employees and vendor taxcodes (${netsuite_account_id}) are syncing.
+    Wait Until Page Contains Element    xpath=.//div[@class="lhv-tbody viewport"]    ${TIMEWAIT}    # Wait table mapping displayed
+    Select Category To Mapping    Hotels    Hotel
+    Select Category To Mapping    Meals    Meals & Entertainment
+    Click Ec Link    expenses    active    ${EMPTY}
+    Wait Until Expense Active Page Load
+    Create Expense And Input Detail Values    ${EMPTY}    E_1    Hotels    ${EMPTY}    -5    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${custom_department}    ${EMPTY}    ${billable_yes}    ${custom_class}    ${EMPTY}    ${custom_location}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Expense And Input Detail Values    ${EMPTY}    E_2    Meals    ${EMPTY}    6    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${billable_no}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Report With Input Report Name    Export_report_to_Netsuite_A25    ${EMPTY}    ${EMPTY}    ${EMPTY}    Is    ${EMPTY}
+    Wait Until Report Detail Page Load
+    ${total_amount}=    Get Total Amount Of Report Detail
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Click Button    id=submitExport
+    Verify Message Export To Integration    Exported Successfully.
+    Page Should Contain Element    xpath=.//i[text()='Submitted']
+    Page Should Contain Element    xpath=.//div[@id='approvalHistoryCont']//li[contains(text(),'${user_owner_fullname} exported to ${netsuite}')]
+    Login Netsute Page    ${netsuite_user_id}    ${netsuite_password}
+    Select Netsuite Menu    Transactions    Employees    Enter Expense Reports    List
+    ${ns_report_row}=    Get Id Tr Row Transactions    Export_report_to_Netsuite_A25
+    Log    ${ns_report_row}
+    Verify Netsuite Employee    ${netsuite_full_name}
+    Page Should Contain Element    xpath=.//table/tbody/tr[@id='${ns_report_row}']/td[text()='${total_amount}']    #${total_amount}
+    Select Netsuite Transactions Link    ${ns_report_row}    Edit
+    # Verify row 01 - First expense
+    Wait Until Page Contains Element    id=expense_row_1    ${TIMEWAIT}
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Memo    E_1
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Category    Hotel
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Amount    -5.00
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Customer    None
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Department    ${default_department}
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Billable    Yes
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Class    None
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_2    Location    ${default_location}
+    # Verify row 02 - First Expense
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Memo    E_2
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Category    Meals & Entertainment
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Amount    6.00
+    Verify Expense Report Values In Netsuite By Row Id    expense_row_1    Billable    None    # Verify values is empty
+
+TCA26_Export the negative non-reimbursable expense to the accounts payable vendor (A26) - (2-Medium)
+    [Documentation]    Export the negative non-reimbursable expense to the accounts payable vendor
+    [Tags]    Export Netsuite    Suites Export Reports    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Remove All Dashboard Alerts
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    ${value}    Run Keyword And Return Status    Page Should Contain Link    link=${negative_report_approve_name}
+    Run keyword If    ${value}    Log    An approve report existed.    ELSE    Create Negative Approve Report    ${negative_report_approve_name}
+    ...    ${user_comad}    ${user_owner}
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Select Checkbox Submit Form    ${netsuite}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    Select    ${EMPTY}
+    Click Element    xpath=.//*[@id='${netsuite}Integration']//button[contains(.,"Save")]
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Wait Until Page Load    Empty category in Integration mapping
+    Synces Integration Data    ${netsuite}    ${netsuite_account_id}    ${user_owner_fullname}    ${netsuite}'s metadata data (${netsuite_account_id}) is syncing.    ${EMPTY}    #${netsuite}'s employees and vendor taxcodes (${netsuite_account_id}) are syncing.
+    Wait Until Page Contains Element    xpath=.//div[@class="lhv-tbody viewport"]    ${TIMEWAIT}    # Wait table mapping displayed
+    Select Category To Mapping    Hotels    Hotel
+    Select Category To Mapping    Meals    Meals & Entertainment
+    Click Ec Link    companies    manage_users    ${EMPTY}
+    Assign User License    ${user_comad}    ${EMPTY}
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    Page Should Contain Link    link=${negative_report_approve_name}
+    Click Link    link=${negative_report_approve_name}
+    Wait Until Report Detail Page Load
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Click Button    id=submitExport
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]    ${TIMEWAIT}
+    Run Keyword If    ${value}    Click Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]//div[@id='btnAllowReSubmit']
+    # SECOND PAGE
+    Wait Until Page Contains Element    id=TitleReimbursable    ${TIMEOUT}
+    Wait Until Page Contains    Reimbursable Expenses
+    Select Dropdown With Input Text    ddlExport_NR_To_chzn    ACOM Business Solutions    # Select vendor is "ACOM Business Solutions"
+    Click Element    id=submitReportBtn
+    Verify Message Export To Integration    Netsuite does not support negative reports.
+
+TCA27_Resync taxcode for bills (A28) - (1-High)
+    [Documentation]    Export empty report
+    [Tags]    Export Netsuite    Suites Export Reports    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Remove All Dashboard Alerts
+    Select Main Menu    reports    create
+    Click Element    id=btnCreateReport
+    Wait Until Expense Active Page Load
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Click Button    id=submitExport
+    # Vefrify dialog show with message "Can not export an empty report!"
+    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//p[text()='Can not export an empty report!']
+
+TCA28_Export empty report (A27) - (2 - Medium)
+    [Documentation]    Resync taxcode for bills
+    [Tags]    Export Netsuite    Suites Export Reports    Completed    Not Mailinator
+    Login Netsute Page    ${netsuite_user_id}    ${netsuite_password}
+    Check And Delete Exist Transactions    Export_report_to_Netsuite_A28    Transactions    Employees    Enter Expense Reports    List    # Delete exist netsuite reports
+    Logout Netsuite Page
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Remove All Dashboard Alerts
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    ${value}    Run Keyword And Return Status    Page Should Contain Link    link=Export_report_to_Netsuite_A28
+    Run keyword If    '${value}' == 'False'    Allow Users To Setup Their Own Integrations
+    Run keyword If    ${value}    Log    An approve report existed.    ELSE    Create New Approve Report    Export_report_to_Netsuite_A28
+    ...    ${user_myapprover_A}    ${user_owner}
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Click Element    xpath=.//div[@id="${netsuite}Integration"]//span[text()='Close']
+    Click Ec Link    mappings    integration    ${EMPTY}
+    Synces Integration Data    ${netsuite}    ${netsuite_account_id}    ${user_owner_fullname}    ${netsuite}'s metadata data (${netsuite_account_id}) is syncing.    ${EMPTY}
+    Select Main Menu    reports    approval
+    Select Dropdown    filterStatus_chzn    My Approval History
+    Wait Until Report Page Load
+    Page Should Contain Link    link=Export_report_to_Netsuite_A28
+    Click Link    link=Export_report_to_Netsuite_A28
+    Wait Until Report Detail Page Load
+    Select Dropdown    exportType_chzn    ${netsuite} - ${netsuite_account_id} - ${user_owner_fullname}
+    Click Button    id=submitExport
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]    ${TIMEWAIT}
+    Run Keyword If    ${value}    Click Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,"display: block;")]//div[@id='btnAllowReSubmit']
+    # SECOND PAGE
+    Wait Until Page Contains Element    id=TitleReimbursable    ${TIMEOUT}
+    Wait Until Page Contains    Reimbursable Expenses
+
+*** Keywords ***
+Login Netsute Page
+    [Arguments]    ${username}    ${password}
+    [Documentation]    SUITE_KEY: Login Netsuite Site
+    ${kw}=    Register Keyword To Run On Failure    Nothing
+    ${value}    Run Keyword And Return Status    Go To    ${netsuite_site}
+    Run Keyword If    ${value}    Log    Netsuite Window is selected.    ELSE    Open Browser    ${netsuite_site}
+    ...    ${BROWSER}    remote_url=${SERVER}
+    Register Keyword To Run On Failure    ${kw}
+    Maximize Browser Window
+    Page Should Contain Textfield    id=userName
+    Input Text    id=userName    ${username}
+    Input Text    name=password    ${password}
+    Click Button    name=submitButton
+    ${value}    Run Keyword And Return Status    Page Should Contain Textfield    id=null    # This step pass security question
+    Run keyword If    ${value}    Input Netsuite Security Question And Submit    ELSE    Log    Site not ask security question.
+    Wait Until Page Contains Element    xpath=.//div[@onclick="document.location = '/app/center/myroles.nl';"]    ${TIMEWAIT}    # Verify Icon profile
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//img[@class='checkboximage']    # This step pass admin message
+    Run keyword If    ${value}    Click Pass Administrator Message    ELSE    Log    The Administrator message doesn't appear.
+    Wait Until Netsuite Home Page Load
+
+Wait Until Netsuite Home Page Load
+    [Documentation]    SUITE_KEY: Wait until netsuite home page load
+    Wait Until Page Contains Element    xpath=.//form[@id='ns-portlet-quicksearch-form']//input[@value='Search']    ${TIMEMAX}    # Wait Search button
+    Sleep    ${TIMEWAIT}    # Lazy Load
+
+Click Pass Administrator Message
+    [Documentation]    SUB keyword for "Login Netsute Page": Click to pass a message admin
+    Click Element    xpath=.//img[@class='checkboximage']
+    Click Element    id=submitter
+
+Input Netsuite Security Question And Submit
+    [Documentation]    SUITE_KEY: Keyword in case Netsuite page ask a security question
+    Select Checkbox    id=pwdstate
+    ${value}    Run Keyword And Return Status    Page Should Contain    ${ns_securiry_qs_01}
+    Run keyword If    ${value}    Input Text    id=null    ${ns_answer_qs_01}
+    ${value}    Run Keyword And Return Status    Page Should Contain    ${ns_securiry_qs_02}
+    Run keyword If    ${value}    Input Text    id=null    ${ns_answer_qs_02}
+    ${value}    Run Keyword And Return Status    Page Should Contain    ${ns_securiry_qs_03}
+    Run keyword If    ${value}    Input Text    id=null    ${ns_answer_qs_03}
+    Click Button    name=submitter
+
+Select Netsuite Menu
+    [Arguments]    ${menu_0}    ${menu_1}    ${menu_2}    ${menu_3}
+    [Documentation]    SUITE_KEY: Select menu netsuite site.
+    ...    Ex: Select Netsuite Menu | Transactions | Employees | Enter Expense | Reports List
+    ${value_0}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//li[@data-title='${menu_0.title()}']    ${TIMEOUT}
+    Run Keyword If    ${value_0}    Mouse Over    xpath=.//li[@data-title='${menu_0.title()}']    ELSE    Log    Main menu '${menu_0}' Not found.
+    ...    # Mouse Over menu 0 if exist
+    ${val_dialog}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//li[@data-title='${menu_0.title()}'][contains(@class,'ns-active')]/a/span    ${TIMEMAX}    # Wait sub menu active
+    Run Keyword If    '${val_dialog}' == 'False'    Select Netsuite Menu    ${menu_0}    ${menu_1}    ${menu_2}    ${menu_3}
+    ...    # Handle case dialog not show
+    Sleep    500ms
+    ${value_1}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//li[@data-title='${menu_0.title()}'][contains(@class,'ns-active')]//li[@data-title='${menu_1.title()}']/a/span
+    Run Keyword If    '${value_1}' == 'False'    Click Element    xpath=.//li[@data-title='${menu_0.title()}'][contains(@class,'ns-active')]/a/span    ELSE    Mouse Over    xpath=.//li[@data-title='${menu_0.title()}'][contains(@class,'ns-active')]//li[@data-title='${menu_1.title()}']/a/span
+    ...    # Click menu 0 if sub menu 1, 2 & 3 are empty
+    Sleep    200ms
+    ${value_2}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//li[@data-title='${menu_0.title()}'][contains(@class,'ns-active')]//li[@data-title='${menu_1.title()}']/ul/li[@data-title='${menu_2.title()}']/a/span
+    Run Keyword If    '${value_2}' == 'False'    Click Element    xpath=.//li[@data-title='${menu_0.title()}'][contains(@class,'ns-active')]//li[@data-title='${menu_1.title()}']/a/span    ELSE    Mouse Over    xpath=.//li[@data-title='${menu_0.title()}'][contains(@class,'ns-active')]//li[@data-title='${menu_1.title()}']/ul/li[@data-title='${menu_2.title()}']/a/span
+    ...    # Click menu 1 if sub menu 2 & 3 are empty
+    Sleep    200ms
+    ${value_3}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//li[@data-title='${menu_0.title()}'][contains(@class,'ns-active')]//li[@data-title='${menu_1.title()}']/ul/li[@data-title='${menu_2.title()}']/ul/li[@data-title='${menu_3.title()}']
+    Run Keyword If    '${value_3}' == 'False'    Click Element    xpath=.//li[@data-title='${menu_0.title()}'][contains(@class,'ns-active')]//li[@data-title='${menu_1.title()}']/ul/li[@data-title='${menu_2.title()}']/a/span    ELSE    Mouse Over    xpath=.//li[@data-title='${menu_0.title()}'][contains(@class,'ns-active')]//li[@data-title='${menu_1.title()}']/ul/li[@data-title='${menu_2.title()}']/ul/li[@data-title='${menu_3.title()}']/a/span
+    ...    # Click menu 2 if sub menu 3 are empty
+    Sleep    200ms
+    Run Keyword If    ${value_3}    Click Element    xpath=.//li[@data-title='${menu_0.title()}'][contains(@class,'ns-active')]//li[@data-title='${menu_1.title()}']/ul/li[@data-title='${menu_2.title()}']/ul/li[@data-title='${menu_3.title()}']/a/span    # Click menu 3 if exist
+
+Select Netsuite Transactions Link
+    [Arguments]    ${ns_report_row}    ${text_link}
+    [Documentation]    SUITE_KEY: Select netsuite link.
+    ...    Ex: Select Netsuite Transactions Link | 0 | View/ Select Netsuite Transactions Link | 0 | Edit
+    Click Element    xpath=.//tr[@id='${ns_report_row}']//a[text()='${text_link}']
+
+Select Netsuite Report By Report Owner
+    [Arguments]    ${ns_report_row}    ${emp_full_name}    ${emp_email}    ${text_link}
+    [Documentation]    SUITE_KEY: Select netsuite row by report owner
+    Wait Until Page Contains Element    xpath=.//tr[@id='${ns_report_row}']//a[text()='${emp_full_name}']    ${TIMEWAIT}
+    Verify Netsuite Employee    ${ns_report_row}    ${emp_full_name}    ${netsuite_account_id}
+    Click Element    xpath=.//tr[@id='${ns_report_row}']//a[text()='${text_link}']
+
+Verify Netsuite Employee
+    [Arguments]    ${emp_full_name}
+    [Documentation]    SUITE_KEY: Verify netsuite employee
+    Page Should Contain Element    xpath=.//a/div[@class='ns-icon']
+    Page Should Contain Element    xpath=.//div[@class='ns-role']/span[text()='${emp_full_name}']
+
+Get Total Amount Of Report Detail
+    [Documentation]    SUITE_KEY: Get total amout of report
+    ${amount_text} =    Get Text    xpath=.//strong[@class='amount']
+    ${length_text} =    Get Length    ${amount_text}
+    ${position}=    Evaluate    ${length_text}-4
+    ${amount_total}=    Set Variable    ${amount_text[:${position}]}
+    Log    ${amount_total}
+    [Return]    ${amount_total}
+
+Get Id Tr Row Transactions
+    [Arguments]    ${report_name}
+    [Documentation]    SUITE_KEY: Get Id of row has content string "${report_name}"
+    ${report_row}    Get Element Attribute    xpath=.//tr/td[contains(text(),'${report_name}')]/..@id
+    [Return]    ${report_row}
+
+Check And Delete Exist Transactions
+    [Arguments]    ${report_name}    ${menu_0}    ${menu_1}    ${menu_2}    ${menu_3}
+    [Documentation]    SUITE_KEY: Check and delete exist transaction with report name and menu
+    ...    Check And Delete Exist Transactions | export_report_to_netsuite | Transactions | Purchases/Vendors | Enter Bills | List
+    : FOR    ${i}    IN RANGE    1    100
+    \    Select Netsuite Menu    ${menu_0}    ${menu_1}    ${menu_2}    ${menu_3}
+    \    Log    ${i}
+    \    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//table//td[contains(text(),'${report_name}')]
+    \    Run keyword If    ${value}    Delete Netsuite Transactions    ${report_name}    ${menu_0}    ${menu_1}
+    \    ...    ${menu_2}    ${menu_3}    ELSE    Exit For Loop
+    \    Log    All Transactions deleted
+
+Delete Netsuite Transactions
+    [Arguments]    ${report_name}    ${menu_0}    ${menu_1}    ${menu_2}    ${menu_3}
+    [Documentation]    SUITE_KEY: Delete netsuite Transactions
+    ${ns_id_row}=    Get Id Tr Row Transactions    ${report_name}    # Get row Id contain Report name
+    Log    ${ns_id_row}
+    Select Netsuite Transactions Link    ${ns_id_row}    Edit
+    Wait Until Page Contains Element    xpath=.//tbody//tr[@id='expense_row_1']    ${TIMEOUT}
+    Mouse Over    xpath=.//form[@id='main_form']//a[@class='pgm_action_menu']    # Hover menu action
+    Sleep    500ms
+    Mouse Over    xpath=.//form[@id='main_form']//a/span[text()='Delete']    # Hover delete link
+    Sleep    500ms
+    Click Element    xpath=.//form[@id='main_form']//a/span[text()='Delete']    # Click delete report
+    Sleep    1s
+    ${message}=    Confirm Action    # Click Ok to confirm delete
+    Should Be Equal    ${message}    Are you sure you want to delete this transaction?
+    #Choose Ok On Next Confirmation
+    Sleep    5s    # Lazy load
+    Wait Until Page Contains    Transaction successfully Deleted    ${TIMEOUT}    # Verify message deleted successfull
+    Wait Until Page Contains Element    xpath=.//form[@id='ns-portlet-quicksearch-form']//input[@value='Search']    ${TIMEOUT}    # Wait Search button
+    #Wait Until Page Contains Element    xpath=.//div[@id='ns-recent-records-container']/ul/li    ${TIMEOUT}
+    Sleep    2s    # Lazy load
+    #Select Netsuite Menu    ${menu_0}    ${menu_1}    ${menu_2}    ${menu_3}
+    #Check And Delete Exist Transactions    ${report_name}    ${menu_0}    ${menu_1}    ${menu_2}    ${menu_3}
+
+Logout Netsuite Page
+    [Documentation]    SUITE_KEY: Logout netsuite page
+    Wait Until Page Contains Element    xpath=.//div[@id='ns_header']//div[@id='spn_cRR_d1']/a
+    Mouse Over    xpath=.//div[@id='ns_header']//div[@id='spn_cRR_d1']/a
+    Wait Until Page Contains Element    xpath=.//div[@id='ns_header']//ul[@class='ns-menu ns-active']//a/span[text()='Sign Out']    ${TIMEOUT}
+    Mouse Over    xpath=.//div[@id='ns_header']//ul[@class='ns-menu ns-active']//a/span[text()='Sign Out']
+    Click Element    xpath=.//div[@id='ns_header']//ul[@class='ns-menu ns-active']//a/span[text()='Sign Out']
+    Title Should Be    title=NetSuite - Customer Login
+
+Verify Expense Report Values In Netsuite By Row Id
+    [Arguments]    ${row_id}    ${header_name}    ${field_values}
+    [Documentation]    SUITE_KEY: Verify value of expense in menu "Enter Expense Report List" in netsuite detail page / Key only use for click edit expense
+    ...    Ex: Verify Expense Report Values In Netsuite By Row Id | expense_row_3 | Location HCM
+    ...    Ex: Verify Expense Report Values In Netsuite By Row Id | expense_row_3 | Non-reimbursable None
+    ${td_number}=    Set Variable    1
+    Run Keyword If    '${header_name.lower()}' == 'ref no.'    Set Suite Variable    ${td_number}    1    ELSE IF    '${header_name.lower()}' == 'date'
+    ...    Set Suite Variable    ${td_number}    2    ELSE IF    '${header_name.lower()}' == 'category'    Set Suite Variable
+    ...    ${td_number}    3    ELSE IF    '${header_name.lower()}' == 'foreign amount'    Set Suite Variable    ${td_number}
+    ...    4    ELSE IF    '${header_name.lower()}' == 'exchange rate'    Set Suite Variable    ${td_number}    5
+    ...    ELSE IF    '${header_name.lower()}' == 'currency'    Set Suite Variable    ${td_number}    6    ELSE IF
+    ...    '${header_name.lower()}' == 'amount'    Set Suite Variable    ${td_number}    7    ELSE IF    '${header_name.lower()}' == 'tax code'
+    ...    Set Suite Variable    ${td_number}    8    ELSE IF    '${header_name.lower()}' == 'tax rate'    Set Suite Variable
+    ...    ${td_number}    9    ELSE IF    '${header_name.lower()}' == 'tax amt'    Set Suite Variable    ${td_number}
+    ...    10    ELSE IF    '${header_name.lower()}' == 'gross amt'    Set Suite Variable    ${td_number}    11
+    ...    ELSE IF    '${header_name.lower()}' == 'memo'    Set Suite Variable    ${td_number}    12    ELSE IF
+    ...    '${header_name.lower()}' == 'department'    Set Suite Variable    ${td_number}    13    ELSE IF    '${header_name.lower()}' == 'class'
+    ...    Set Suite Variable    ${td_number}    14    ELSE IF    '${header_name.lower()}' == 'customer'    Set Suite Variable
+    ...    ${td_number}    15    ELSE IF    '${header_name.lower()}' == 'location'    Set Suite Variable    ${td_number}
+    ...    16    ELSE IF    '${header_name.lower()}' == 'billable'    Set Suite Variable    ${td_number}    17
+    ...    ELSE IF    '${header_name.lower()}' == 'attach file'    Set Suite Variable    ${td_number}    18    ELSE IF
+    ...    '${header_name.lower()}' == 'receipt'    Set Suite Variable    ${td_number}    19    ELSE IF    '${header_name.lower()}' == 'non-reimbursable'
+    ...    Set Suite Variable    ${td_number}    20    ELSE    Fail    Not found number to set "${header_name}".
+    Run Keyword If    '${field_values.lower()}' == 'none'    Verify Expense Values In Netsuite With Blank Field    ${row_id}    ${td_number}    ${field_values}    ELSE
+    ...    Page Should Contain Element    xpath=.//tr[@id='${row_id}']/td[${td_number}][text()='${field_values}']
+
+Verify Expense Bills Values In Netsuite By Row Id
+    [Arguments]    ${row_id}    ${header_name}    ${field_values}
+    [Documentation]    SUITE_KEY: Verify value of expense in menu "Enter Bills" in netsuite detail page / Key only use for click edit expense
+    ...    Ex: Verify Expense Bills Values In Netsuite By Row Id | expense_row_1 | Location HCM
+    ...    Ex: Verify Expense Bills Values In Netsuite By Row Id | expense_row_3 | Non-reimbursable None
+    ${td_number}=    Set Variable    1
+    Run Keyword If    '${header_name.lower()}' == 'account'    Set Suite Variable    ${td_number}    1    ELSE IF    '${header_name.lower()}' == 'amount'
+    ...    Set Suite Variable    ${td_number}    2    ELSE IF    '${header_name.lower()}' == 'memo'    Set Suite Variable
+    ...    ${td_number}    3    ELSE IF    '${header_name.lower()}' == 'department'    Set Suite Variable    ${td_number}
+    ...    4    ELSE IF    '${header_name.lower()}' == 'class'    Set Suite Variable    ${td_number}    5
+    ...    ELSE IF    '${header_name.lower()}' == 'customer'    Set Suite Variable    ${td_number}    6    ELSE IF
+    ...    '${header_name.lower()}' == 'location'    Set Suite Variable    ${td_number}    7    ELSE IF    '${header_name.lower()}' == 'billable'
+    ...    Set Suite Variable    ${td_number}    8    ELSE IF    '${header_name.lower()}' == 'related asset'    Set Suite Variable
+    ...    ${td_number}    9    ELSE    Fail    Not found number to set "${header_name}".
+    Run Keyword If    '${field_values.lower()}' == 'none'    Verify Expense Values In Netsuite With Blank Field    ${row_id}    ${td_number}    ${field_values}    ELSE
+    ...    Page Should Contain Element    xpath=.//tr[@id='${row_id}']/td[${td_number}][text()='${field_values}']
+
+Verify Expense Values In Netsuite With Blank Field
+    [Arguments]    ${row_id}    ${td_num}    ${field_values}
+    [Documentation]    SUITE_KEY: Verify blank value in netsuite expense row
+    ${value_field}=    Get Value    xpath=.//tr[@id='${row_id}']/td[${td_num}]
+    Log    ${value_field}
+    Should Be Equal As Strings    ${value_field}    ${field_values}
+
+Verify Expense In Reimbursable Panel
+    [Arguments]    ${reimbursable_id}    ${expense_merchant_name}
+    [Documentation]    SUITE_KEY: Verify expens in Reimbursable & Non-Reimbursable after submit report to netsuite
+    Page Should Contain Element    xpath=.//div[@id='${reimbursable_id}']//div[text()='${expense_merchant_name}']
+
+Create New Approve Report
+    [Arguments]    ${report_name}    ${user_owner_create_report}    ${user_approve_report}
+    [Documentation]    SUITE_KEY: Create an approve report for suite " Export report to Netsuite"
+    ...    // When I wrote this, only God and I understood what I was doing
+    ...    // Now, God only knows
+    ...    // I am not responsible of this code.
+    ...    // They made me write it, against my will.
+    Log Out Expense Cloud
+    Log In    ${sever_test}    ${user_owner_create_report}    ${pass_general}
+    Remove All Dashboard Alerts
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    Click Setting Menu    settings    report    ${EMPTY}
+    Delete All Current Connections Or Integrations
+    Setup A Connection In Setting Page    Approver    ${user_approve_report}
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Wait Until Page Load    Empty category in Integration mapping
+    Synces Integration Data    ${netsuite}    ${netsuite_account_id}    ${user_comad_fullname}    ${netsuite}'s metadata data (${netsuite_account_id}) is syncing.    ${EMPTY}    #${netsuite}'s employees and vendor taxcodes (${netsuite_account_id}) are syncing.
+    Wait Until Page Contains Element    xpath=.//div[@class="lhv-tbody viewport"]    ${TIMEWAIT}    # Wait table mapping reload & display
+    Click Ec Link    expenses    active    ${EMPTY}
+    Wait Until Expense Active Page Load
+    Create Expense And Input Detail Values    ${EMPTY}    Ex_1st    Hotels    ${EMPTY}    2    ${EMPTY}
+    ...    ${EMPTY}    ${valid_client}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${valid_department}    ${non_reimbursable_yes}    ${billable_yes}    ${valid_class}    ${EMPTY}    ${valid_location}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Expense And Input Detail Values    ${EMPTY}    Ex_2nd    Meals    ${EMPTY}    3    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${non_reimbursable_yes}    ${billable_no}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Expense And Input Detail Values    ${EMPTY}    Ex_3rd    Hotels    ${EMPTY}    2    ${EMPTY}
+    ...    Invalid Ns Proj    Invalid Ns Client    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    Invalid Ns Depart    ${non_reimbursable_yes}    ${billable_yes}    Invalid Ns Clazz    ${EMPTY}    Invalid Ns Location
+    ...    ${EMPTY}    ${EMPTY}
+    Create Expense And Input Detail Values    ${EMPTY}    Ex_4th    Hotels    ${EMPTY}    3    ${EMPTY}
+    ...    ${EMPTY}    ${valid_client}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${valid_department}    ${non_reimbursable_no}    ${billable_yes}    ${valid_class}    ${EMPTY}    ${valid_location}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Expense And Input Detail Values    ${EMPTY}    Ex_5th    Meals    ${EMPTY}    3    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${non_reimbursable_no}    ${billable_no}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Expense And Input Detail Values    ${EMPTY}    Ex_6th    Hotels    ${EMPTY}    6    ${EMPTY}
+    ...    Invalid Ns Proj    Invalid Ns Client    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    Invalid Ns Depart    ${non_reimbursable_no}    ${billable_yes}    Invalid Ns Clazz    ${EMPTY}    Invalid Ns Location
+    ...    ${EMPTY}    ${EMPTY}
+    #${total_amount}=    Get Total Amount Of Report Detail
+    #${report_date}=    Get Text    xpath=.//ul[@id='reportSummary']//span[text()='Submitted Date:']/following-sibling::i
+    Create Report With Input Report Name    ${report_name}    ${EMPTY}    ${EMPTY}    ${EMPTY}    Is    ${EMPTY}
+    Wait Until Report Detail Page Load
+    #Input Text    xpath=.//textarea[@id='ReportNote']    Report to Netsuite
+    #Input Text    id=ReportNote    Report to Netsuite
+    Dropdown Should Contain Connection Or Integration    exportType_chzn    My Approver
+    Select Dropdown    exportType_chzn    My Approver
+    ${yyyy}    ${mm}    ${dd}    Get Time    year,month,day
+    ${approve_date}    Set Variable    ${yyyy}-${mm}-${dd}
+    #${approve_date}=    Get Date Time Zone    America/Tijuana    %Y-%m-%d
+    Click Button    id=submitExport
+    Verify Page Show Message    success    Exported Successfully.
+    Log Out Expense Cloud
+    Log In    ${sever_test}    ${user_approve_report}    ${pass_general}
+    Click Setting Menu    settings    report    ${EMPTY}
+    Delete Connection Or Integration By Name If Exist    Approver2
+    Delete Connection Or Integration By Name If Exist    Bookkeeper
+    Click Link    /users/dashboard
+    Reload Page And Wait Until Dashboard Page Contains    An expense report for ${user_owner_create_report} is ready to be reviewed    ${approve_date}
+    Click Element    xpath=.//a[text()='An expense report for ${user_owner_create_report} is ready to be reviewed']
+    Wait Until Report Detail Page Load
+    Click Button    id=btnApproved
+    Wait Until Page Contains Element    xpath=.//i[@class='approved'][contains(.,'Approved')]    ${TIMEOUT}
+
+Create Invalid Approve Report
+    [Arguments]    ${report_name}    ${user_owner_create_report}    ${user_approve_report}
+    [Documentation]    SUITE_KEY: Create Invalid Approve Report "Export report to Netsuite"
+    ...    // When I wrote this, only God and I understood what I was doing
+    ...    // Now, God only knows
+    ...    // I am not responsible of this code.
+    ...    // They made me write it, against my will.
+    Log Out Expense Cloud
+    Log In    ${sever_test}    ${user_owner_create_report}    ${pass_general}
+    Remove All Dashboard Alerts
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    Click Setting Menu    settings    report    ${EMPTY}
+    Delete All Current Connections Or Integrations
+    Setup A Connection In Setting Page    Approver    ${user_approve_report}
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Wait Until Page Load    Empty category in Integration mapping
+    Synces Integration Data    ${netsuite}    ${netsuite_account_id}    ${user_comad_fullname}    ${netsuite}'s metadata data (${netsuite_account_id}) is syncing.    ${EMPTY}    #${netsuite}'s employees and vendor taxcodes (${netsuite_account_id}) are syncing.
+    Wait Until Page Contains Element    xpath=.//div[@class="lhv-tbody viewport"]    ${TIMEWAIT}    # Wait table mapping reload & display
+    Click Ec Link    expenses    active    ${EMPTY}
+    Wait Until Expense Active Page Load
+    Create Expense And Input Detail Values    ${EMPTY}    The first expense_1st    Hotels    ${EMPTY}    2    ${EMPTY}
+    ...    ${invalid_project}    ${invalid_client}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${invalid_department}    ${non_reimbursable_yes}    ${billable_yes}    ${invalid_class}    ${EMPTY}    ${invalid_location}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Expense And Input Detail Values    ${EMPTY}    The second expense_2nd    Miscellaneous    ${EMPTY}    3    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${non_reimbursable_yes}    ${billable_no}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Report With Input Report Name    ${report_name}    ${EMPTY}    ${EMPTY}    ${EMPTY}    Is    ${EMPTY}
+    Wait Until Report Detail Page Load
+    Dropdown Should Contain Connection Or Integration    exportType_chzn    My Approver
+    Select Dropdown    exportType_chzn    My Approver
+    ${yyyy}    ${mm}    ${dd}    Get Time    year,month,day
+    ${approve_date}    Set Variable    ${yyyy}-${mm}-${dd}
+    #${approve_date}=    Get Date Time Zone    America/Tijuana    %Y-%m-%d
+    Click Button    id=submitExport
+    Verify Page Show Message    success    Exported Successfully.
+    Log Out Expense Cloud
+    Log In    ${sever_test}    ${user_approve_report}    ${pass_general}
+    Click Setting Menu    settings    report    ${EMPTY}
+    Delete Connection Or Integration By Name If Exist    Approver2
+    Delete Connection Or Integration By Name If Exist    Bookkeeper
+    Click Link    /users/dashboard
+    Reload Page And Wait Until Dashboard Page Contains    An expense report for ${user_owner_create_report} is ready to be reviewed    ${approve_date}
+    Click Element    xpath=.//a[text()='An expense report for ${user_owner_create_report} is ready to be reviewed']
+    Wait Until Report Detail Page Load
+    Click Button    id=btnApproved
+    Wait Until Page Contains Element    xpath=.//i[@class='approved'][contains(.,'Approved')]    ${TIMEOUT}
+
+Create Negative Approve Report
+    [Arguments]    ${report_name}    ${user_owner_create_report}    ${user_approve_report}
+    [Documentation]    SUITE_KEY: Create Negative Approve Report "Export report to Netsuite"
+    Log Out Expense Cloud
+    Log In    ${sever_test}    ${user_owner_create_report}    ${pass_general}
+    Remove All Dashboard Alerts
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    Click Setting Menu    settings    report    ${EMPTY}
+    Delete All Current Connections Or Integrations
+    Setup A Connection In Setting Page    Approver    ${user_approve_report}
+    Delete And Access Integration Submit Form    ${netsuite}
+    Input Netsuite Account And Submit    ${netsuite_user_id}    ${netsuite_password}    ${netsuite_account_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${netsuite}
+    Access Integration Mapping    ${netsuite}
+    Verify Integration Mapping Displayed
+    Wait Until Page Load    Empty category in Integration mapping
+    Synces Integration Data    ${netsuite}    ${netsuite_account_id}    ${user_comad_fullname}    ${netsuite}'s metadata data (${netsuite_account_id}) is syncing.    ${EMPTY}    #${netsuite}'s employees and vendor taxcodes (${netsuite_account_id}) are syncing.
+    Wait Until Page Contains Element    xpath=.//div[@class="lhv-tbody viewport"]    ${TIMEWAIT}    # Wait table mapping reload & display
+    Click Ec Link    expenses    active    ${EMPTY}
+    Wait Until Expense Active Page Load
+    Create Expense And Input Detail Values    ${EMPTY}    E_1    Hotels    ${EMPTY}    -5    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${non_reimbursable_yes}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Expense And Input Detail Values    ${EMPTY}    E_2    Meals    ${EMPTY}    10    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${non_reimbursable_no}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Report With Input Report Name    ${report_name}    ${EMPTY}    ${EMPTY}    ${EMPTY}    Is    ${EMPTY}
+    Wait Until Report Detail Page Load
+    Dropdown Should Contain Connection Or Integration    exportType_chzn    My Approver
+    Select Dropdown    exportType_chzn    My Approver
+    ${yyyy}    ${mm}    ${dd}    Get Time    year,month,day
+    ${approve_date}    Set Variable    ${yyyy}-${mm}-${dd}
+    #${approve_date}=    Get Date Time Zone    America/Tijuana    %Y-%m-%d
+    Click Button    id=submitExport
+    Verify Page Show Message    success    Exported Successfully.
+    Log Out Expense Cloud
+    Log In    ${sever_test}    ${user_approve_report}    ${pass_general}
+    Click Setting Menu    settings    report    ${EMPTY}
+    Delete Connection Or Integration By Name If Exist    Approver2
+    Delete Connection Or Integration By Name If Exist    Bookkeeper
+    Click Link    /users/dashboard
+    Reload Page And Wait Until Dashboard Page Contains    An expense report for ${user_owner_create_report} is ready to be reviewed    ${approve_date}
+    Click Element    xpath=.//a[text()='An expense report for ${user_owner_create_report} is ready to be reviewed']
+    Wait Until Report Detail Page Load
+    Click Button    id=btnApproved
+    Wait Until Page Contains Element    xpath=.//i[@class='approved'][contains(.,'Approved')]    ${TIMEOUT}
+
+Add Netsuite Supervisor
+    [Arguments]    ${username_owner}    ${supervisor_value}
+    [Documentation]    SUITE_KEY: Add subvisor for netsuite account
+    Wait Until Page Contains Element    xpath=.//h2[@class='uir-list-name'][contains(text(),'Employees')]    ${TIMEWAIT}
+    ${user_row}=    Get User Row Id By Username    ${username_owner}
+    Select Netsuite Transactions Link    ${user_row}    Edit    # Select edit to view user profile
+    Wait Until Page Contains Element    id=hrtxt
+    Click Element    id=hrtxt    # Click tab Human resource
+    Select Netsuite Dropdown    inpt_supervisor    ${supervisor_value}    # Select dropdown supervisor
+    Click Button    id=btn_multibutton_submitter    # Click Button save
+    ${confirm_action}    Run Keyword And Return Status    Confirm Action
+    Log    Confirm action = ${confirm_action}
+    #${message}=    Confirm Action    # Click Ok to confirm update
+    #Should Be Equal    ${message}    The record has not changed.    Do you really want to submit it?
+
+Remove Netsuite Supervisor --------- NO NEED USE,ADD SUPERVISOR WITH EMPTY VALUE
+    [Arguments]    ${username_owner}    ${supervisor_value}
+    [Documentation]    SUITE_KEY: Remove subvisor for netsuite account
+    ${user_row}=    Get User Row Id By Username    ${username_owner}
+    Select Netsuite Transactions Link    ${user_row}    Edit    # Select edit to view user profile
+    Wait Until Page Contains Element    id=hrtxt
+    Click Element    id=hrtxt    # Click tab Human resource
+    Select Netsuite Dropdown    inpt_supervisor32    ${supervisor_value}    # Remove dropdown supervisor
+    Click Button    id=btn_multibutton_submitter    # Click Button save
+
+Get User Row Id By Username
+    [Arguments]    ${username_owner}
+    [Documentation]    SUITE_KEY: Get Id of row content email "${username_owner}"
+    ${id_row}    Get Element Attribute    xpath=.//tr/td/a[text()='${username_owner}']/../..@id    # Get id of row contains username
+    Log    ${id_row}
+    [Return]    ${id_row}
+
+Select Netsuite Dropdown
+    [Arguments]    ${name_dropdown}    ${val_dropdown}
+    [Documentation]    SUITE_KEY: Select dropdown in netsuite page with argument Dropdown Name & value
+    Wait Until Page Contains Element    xpath=.//input[@name='${name_dropdown}']/following-sibling::span/img
+    Click Element    xpath=.//input[@name='${name_dropdown}']/following-sibling::span/img    # Click arrow of dropdown
+    Run Keyword If    '${val_dropdown}' <> '${EMPTY}'    Wait Until Page Contains Element    xpath=.//div[@class='dropdownDiv'][contains(@style,'display: block;')]/div[text()='${val_dropdown}']    ${TIMEWAIT}    ELSE    Wait Until Page Contains Element
+    ...    xpath=.//div[@class='dropdownDiv'][contains(@style,'display: block;')]/div[1]    ${TIMEWAIT}    # Verify value dropdown display
+    Run Keyword If    '${val_dropdown}' <> '${EMPTY}'    Mouse Over    xpath=.//div[@class='dropdownDiv'][contains(@style,'display: block;')]/div[text()='${val_dropdown}']    ELSE    Mouse Over    xpath=.//div[@class='dropdownDiv'][contains(@style,'display: block;')]/div[1]
+    Run Keyword If    '${val_dropdown}' <> '${EMPTY}'    Click Element    xpath=.//div[@class='dropdownDiv'][contains(@style,'display: block;')]/div[text()='${val_dropdown}']    ELSE    Click Element    xpath=.//div[@class='dropdownDiv'][contains(@style,'display: block;')]/div[1]
+    Page Should Contain Element    xpath=.//input[@name='${name_dropdown}'][@title='${val_dropdown}']
+
+Verify Netsuite Alert Message Display
+    [Arguments]    ${msg_type}    ${msg_value}
+    [Documentation]    SUITE_KEY: Verify netsuite alert message show
+    ...    Ex: Verify Netsuite Alert Message Display | Confirmation | Employee successfully Saved
+    Run Keyword If    '${msg_type}' <> '${EMPTY}'    Wait Until Page Contains Element    xpath=.//div[@id='div__alert']//div[@class='title'][text()='${msg_type}']    ${TIMEWAIT}    ELSE    Log
+    ...    Message type was empty
+    Wait Until Page Contains Element    xpath=.//div[@id='div__alert']//div[@class='descr'][text()='${msg_value}']    ${TIMEWAIT}
+    Sleep    1s    # Lazy load
+
+Verify Warning & Tooltip Show In Expense Detail Page
+    [Arguments]    ${ex_merchantname}    ${field_name}    ${tooltip_text}
+    [Documentation]    SUITE_KEY: Verify warrning show in report detail page with expense merchant name
+    ${num_datarow}    Get Element Attribute    xpath=.//div[text()='${ex_merchantname}']/..@data-row
+    ${num_datacol}=    Set Variable    1
+    Run Keyword If    '${field_name.lower()}' == 'project'    Set Suite Variable    ${num_datacol}    4    ELSE IF    '${field_name.lower()}' == 'client'
+    ...    Set Suite Variable    ${num_datacol}    5    ELSE    Fail    Field "${field_name}" not available in report detail page.
+    Page Should Contain Element    xpath=.//div[@data-row='${num_datarow}']/div[@data-col='${num_datacol}']//img[@src='/img/common/warning.png']
+    Mouse Over    xpath=.//div[@data-row='${num_datarow}']/div[@data-col='${num_datacol}']//img[@src='/img/common/warning.png']
+    Sleep    ${TIMEMIN}    # Wait until tooltip displayed
+    Page Should Contain Element    xpath=.//div[@data-row='${num_datarow}']/div[@data-col='${num_datacol}']//img[@title='${tooltip_text}']
+
+Verify Warning & Tooltip Show In Report Detail Second Page
+    [Arguments]    ${ex_merchantname}    ${field_name}    ${tooltip_text}
+    [Documentation]    SUITE_KEY: Verify warrning show in report detail second page with expense merchant name
+    ${num_datarow}    Get Element Attribute    xpath=.//div[text()='${ex_merchantname}']/..@data-row
+    ${num_datacol}=    Set Variable    1
+    Run Keyword If    '${field_name.lower()}' == 'project'    Set Suite Variable    ${num_datacol}    6    ELSE IF    '${field_name.lower()}' == 'client'
+    ...    Set Suite Variable    ${num_datacol}    5    ELSE    Fail    Field "${field_name}" not available in report detail page.
+    Page Should Contain Element    xpath=.//div[@data-row='${num_datarow}']/div[@data-col='${num_datacol}']//img[@src='/img/common/warning.png']
+    Mouse Over    xpath=.//div[@data-row='${num_datarow}']/div[@data-col='${num_datacol}']//img[@src='/img/common/warning.png']
+    Sleep    ${TIMEMIN}    # Wait until tooltip displayed
+    Page Should Contain Element    xpath=.//div[@data-row='${num_datarow}']/div[@data-col='${num_datacol}']//img[@title='${tooltip_text}']
+    # ------------------- SOME CASES CATCH DYNAMIC TAG TD, REVIEW - INFEASIBLE    -------------------    #
+
+Verify Expense Field In Report Detail Page Exported
+    [Arguments]    ${merchant_name}    ${id_field}    ${val_field}
+    [Documentation]    SUITE_KEY: Verify expense field
+    #Wait Until Page Contains    ${merchant_name}    ${TIMEWAIT}
+    #Select Expense By Name    ${merchant_name}
+    Wait Until Page Contains Element    ${id_field}    ${TIMEWAIT}
+    Textfield Value Should Be    ${id_field}    ${val_field}
+    #${val_editform}    Run Keyword And Return Status    Page Should Not Contain Element    xpath=.//div[@id='editDetailsPanel'][@style='display: none;']
+    #Click Element    id=cancelViewTranButton
+    #Select Expense By Name    ${ec_name}
+    #Page Should Contain Element    xpath=.//div[@class='grid']//div[@id='viewDetailsPanel'][contains(@style,'display: block;')]
+    #Click Element    id=cancelViewTranButton
+
+Verify Expense Report Values In Netsuite By Row Id - C2 & C3 KHONG KHA THI, RUN QUA LAU
+    [Arguments]    ${row_id}    ${header_name}    ${field_values}
+    [Documentation]    SUITE_KEY: Verify value of expense in menu "Enter Expense Report List" in netsuite detail page / Key only use for click edit expense
+    ...    Ex: Verify Expense Report Values In Netsuite By Row Id | expense_row_3 | Location | HCM
+    ...    Ex: Verify Expense Report Values In Netsuite By Row Id | expense_row_3 | Non-reimbursable | Yes
+    ${td_num}    Get Column Number By Expense Field Name    ${header_name}
+    Run Keyword If    '${field_values.lower()}' == 'none'    Verify Expense Values In Netsuite With Blank Field    ${row_id}    ${td_num}    ${field_values}    ELSE
+    ...    Page Should Contain Element    xpath=.//tr[@id='${row_id}']/td[${td_num}][text()='${field_values}']
+
+Verify Expense Bills Values In Netsuite By Row Id - C2 & C3 KHONG KHA THI, RUN QUA LAU
+    [Arguments]    ${row_id}    ${header_name}    ${field_values}
+    [Documentation]    SUITE_KEY: Verify value of expense in menu "Enter Bills" in netsuite detail page / Key only use for click edit expense
+    ...    Ex: Verify Expense Bills Values In Netsuite By Row Id | expense_row_1 | Location HCM
+    ...    Ex: Verify Expense Bills Values In Netsuite By Row Id | expense_row_3 | Non-reimbursable None
+    ${td_num}    Get Column Number By Expense Field Name    ${header_name}
+    Run Keyword If    '${field_values.lower()}' == 'none'    Verify Expense Values In Netsuite With Blank Field    ${row_id}    ${td_num}    ${field_values}    ELSE
+    ...    Page Should Contain Element    xpath=.//tr[@id='${row_id}']/td[${td_num}][text()='${field_values}']
+
+Get Column Number By Expense Field Name - CACH 02
+    [Arguments]    ${header_name}
+    [Documentation]    SUITE_KEY: [NETSUITE] Loop to get xpense field column
+    ...    Get Column Number By Expense Field Name | location |
+    : FOR    ${i}    IN RANGE    1    21
+    \    Log    ${i}
+    \    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//tr[@id='expense_headerrow']//td[${i}]/div[text()='${header_name}']
+    \    Run Keyword If    ${value}    Exit For Loop    ELSE    Log    Not found header name: '${header_name}' at column td[${i}].
+    [Return]    ${i}
+
+Get Column Number By Expense Field Name - CACH 03
+    [Arguments]    ${header_name}
+    [Documentation]    SUITE_KEY: [NETSUITE] Get expense col in Netsuite report detail
+    ${ex_col}    Evaluate    0
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//tr[@id='expense_headerrow']//td[${ex_col}]/div[text()='${header_name}']
+    Run keyword If    ${value}    Log    Got netsuite expense column.    ELSE    Get Expense Column In Netsuite Report    ${ex_col}
+    ...    ${header_name}
+    [Return]    ${ex_col}
+
+Get Expense Column In Netsuite Report - CACH 03_01
+    [Arguments]    ${ex_col}    ${header_name}
+    [Documentation]    SUB keyword for "Get Column Number By Expense Field Name": Loop to get expense col
+    ${ex_col_plus}    Evaluate    ${ex_col}+1
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//tr[@id='expense_headerrow']//td[${ex_col_plus}]/div[text()='${header_name}']
+    Run keyword If    ${value}    Set Suite Variable    ${ex_col}    ${ex_col_plus}    ELSE    Get Expense Column In Netsuite Report
+    ...    ${ex_col_plus}    ${header_name}
+
+> - Select Country For Tax Code
+    [Arguments]    ${country_name}
+    [Documentation]    Creare new tax code, Step 01, select country for tax code
+    Wait Until Page Contains Element    xpath=.//table[@id='__tab']//a[@class='dottedlink'][text()='${country_name}']
+    Click Element    xpath=.//table[@id='__tab']//a[@class='dottedlink'][text()='${country_name}']
+
+> - Input All Tax Code Field
+    [Arguments]    ${tc_name}    ${tc_description}    ${tc_rate}    ${tc_effective_form}    ${tc_valid_until}    ${tc_drx_tax_agency}
+    ...    ${tc_ckb_include_children}    ${tc_drx_tax_type}    ${tc_purchase_tax_account}    ${tc_sale_tax_account}    ${tc_available_on}    ${tc_ckb_exempt}
+    ...    ${tc_ckb_default_code}    ${tc_ckb_export}    ${tc_ckb_exclude_gst_reports}    ${tc_ckb_inactive}    ${tc_ckb_no_tax_invoice}    ${tc_ckb_purchaser_issued}
+    ...    ${tc_ckb_capital_goods}
+    [Documentation]    COMMON_KEY: Input all tax code fields
+    Wait Until Page Contains Element    id=itemid
+    Run Keyword If    '${tc_name}'=='${EMPTY}'    Log    Tax Code Name is empty values.    ELSE    Input Text    id=itemid
+    ...    ${tc_name}    # Input Tax Code Name    id=itemid
+    Run Keyword If    '${tc_description}'=='${EMPTY}'    Log    Description is empty values.    ELSE    Input Text    id=description
+    ...    ${tc_description}    # Input Description    id=description
+    Run Keyword If    '${tc_rate}'=='${EMPTY}'    Log    Rate is empty values.    ELSE    Input Text    id=rate_formattedValue
+    ...    ${tc_rate}    # Input Rate    id=rate_formattedValue
+    Run Keyword If    '${tc_effective_form}'=='${EMPTY}'    Log    Effective Form is empty values.    ELSE    Input Text    id=effectivefrom
+    ...    ${tc_effective_form}    # Input Effective Form    id=effectivefrom
+    Run Keyword If    '${tc_valid_until}'=='${EMPTY}'    Log    Valid Until is empty values.    ELSE    Input Text    id=validuntil
+    ...    ${tc_valid_until}    # Input Valid Until    id=validuntil
+    Run Keyword If    '${tc_drx_tax_agency}'=='${EMPTY}'    Log    Tax Agency is empty values.    ELSE    Select Netsuite Dropdown    id=inpt_taxagency1
+    ...    ${tc_drx_tax_agency}    # Select Dropbox Tax Agency    id=inpt_taxagency1
+    Run Keyword If    '${tc_drx_tax_agency}'=='${EMPTY}'    Log    Tax Agency is empty values.    ELSE    Select Netsuite Dropdown    id=inpt_taxagency1
+    ...    ${tc_drx_tax_agency}    # Checkbox Include Children    id="includechildren_fs_inp
+    # Select Dropdown Tax Type    id="inpt_taxtype3
+    # Input Purchase Tax Account    id="acct1
+    # Input Sale Tax Account    id="acct2
+    # Input Available On    id="inpt_available4
+    # Checkbox Exempt
+    # Checkbox Default Code
+    # Checkbox Export
+    # Checkbox Exclude From GST Reports
+    # Checkbox Inactive
+    # Checkbox No Tax Invoice
+    # Checkbox Purchaser Issued
+    # Checkbox Capital Goods
+
+> - Select Netsuite Dropdown Div
+    [Arguments]    ${id_span_dropdown}
+    [Documentation]    COMMON_KEY: Input all tax code fields
+
+> - Create New Tax Code

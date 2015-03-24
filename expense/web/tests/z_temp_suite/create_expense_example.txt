@@ -1,0 +1,42 @@
+*** Settings ***
+Suite Setup       Set Server
+Test Teardown     Close All Browsers
+Resource          ../../conf/selenium_connect.txt
+
+*** Variables ***
+
+*** Test Cases ***
+Test 1
+    [Documentation]    Verifies that Create Random Expense works
+    Log In    ${sever_test}    ${user_owner}    ${pass_owner}
+    Click Link    /expenses/active
+    Wait Until Expense Active Page Load
+    Create Category Map
+    Create Random Expense    Test1    ${cat_map}
+
+Test 2
+    [Documentation]    Verifies that Create Expense works with parent
+    Click Link    /expenses/active
+    Wait Until Expense Active Page Load
+    Create Category Map
+    ${parent}    Set Variable    meals
+    Create Expense    ${parent}    ${NONE}    Test    ${cat_map}
+
+Test 3
+    [Documentation]    Verifies that Create Expense works with children
+    Click Link    /expenses/active
+    Wait Until Expense Active Page Load
+    Create Category Map
+    ${parent}    Set Variable    meals
+    ${child}    Set Variable    Business Meals
+    Create Expense    ${parent}    ${child}    Test    ${cat_map}
+
+TC_ LOG IN
+    [Documentation]    Template Test Case
+    Log In    ${sever_test}    ${user_owner}    ${pass_owner}
+
+TC_ Delete All report
+    [Documentation]    Template Test Case
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Delete All Reports
+    Delete All Current Expenses If Exists

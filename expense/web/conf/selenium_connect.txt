@@ -1,0 +1,87 @@
+*** Settings ***
+Documentation     /* FILE CONFIG */
+Library           Selenium2Library
+Library           Collections
+Library           String
+Library           SSHLibrary
+Resource          ../lib/list_variables.txt
+Resource          ../lib/common_lib/login_tools.txt
+Resource          ../lib/common_lib/register_tools.txt
+Resource          ../lib/common_lib/category_tools.txt
+Resource          ../lib/common_lib/expense_tools.txt
+Resource          ../lib/common_lib/report_tools.txt
+Resource          ../lib/common_lib/user_tools.txt
+Resource          ../lib/common_lib/company_tools.txt
+Resource          ../tests/Suites_Company_Test_Cases/policies_key.txt
+Resource          ../tests/Suites_Integration_Test_Cases/integration_key.txt
+Resource          ../tests/Suites_Settings_Test_Cases/setting_key.txt
+Resource          ../tests/Suites_Reports_Test_Cases/reports_key.txt
+Resource          ../tests/Suites_User_Management/user_management_key.txt
+
+*** Variable ***
+#Selenium Library connection settings
+#${SERVER_URL}    http://192.168.33.10    # IP test sever linux
+${SERVER_URL}     http://localhost
+#${BROWSER}       phantomjs    # Browser test on linux
+${BROWSER}        firefox
+#GENERAL:
+#${sever_test}    https://www.expensecloud.com
+${sever_test}     https://dev01.app7.com    # Expense URL
+#VIRTUAL MACHINE
+${account_type}    Virtual    # Prod (production) / Machine (dev01,02) / Virtual (dev01,02)
+${user_owner_fullname}    Company Owner Test
+${user_owner}     ec_companyowner@yahoo.com
+${user_comad_fullname}    Compn Ad
+${user_comad}     ecvn_companyad@yahoo.com    # Company Admin
+${user_myapprover_A_fullname}    My Approver Test
+${user_myapprover_A}    ecvn_myapprover@yahoo.com
+${user_nextapprover_B}    ecvn_nextapprover@yahoo.com
+${user_bookkeeper_C}    ecvn_bkapprover@yahoo.com
+${user_freeuser}    ecvn_freeuser@yahoo.com
+${pass_general}    Lhvcreate9
+# >>> Remove all pass
+#${pass_owner}    Lhvcreate9
+#${pass_comad}    Lhvcreate9
+#${pass_myapprover_A}    Lhvcreate9
+#${pass_nextapprover_B}    Lhvcreate9
+#${pass_bookkeeper_C}    Lhvcreate9
+#${pass_freeuser}    Lhvcreate9
+${user_CSV}       ecvn_csvapprover@yahoo.com
+${user_invalid}    "#%$%^^%$@lhv.vn#$@#
+${TIMESLEEP}      3s
+${TIMEWAIT}       7s
+${TIMEOUT}        20s
+${TIMEMAX}        1m
+${TIMEMIN}        1s
+${DELAY}          .25
+#${prod_url}      http://www.trinetexpense.com
+${prod_url}       https://www.expensecloud.com
+${dev1_url}       http://dev01.app7.com
+${dev2_url}       http://dev02.app7.com
+${url}            http://dev05.app7.com
+#Sign up Location Variables
+${su_pw_cfm_txtfld}    //*[@id='UserConfirmPassword']
+#Labels
+${pw_cfm_label}    //*[@id='UserRegisterForm']/ul/li[3]/label
+${chk_box_label}    //*[@id='UserRegisterForm']/ul/li[4]/label
+#Category parents and children variables
+${parent_base}    //*[@id="categoryDropdown"]/li[parent_id]/a
+${child_base}     /ul/li[child_id]/a
+${parent_num}     7
+${meals_child_num}    2
+${misc_child_num}    14
+${travel_child_num}    7
+#XPath of Recepits
+${expense_line_path}    //*[@id="grid"]/div[2]/div/div[2]/div/div/div[2]
+${receipt_image_path}    //*[@id="receiptBox"]/div[3]/img
+#Windows testing box variables
+#                 DO NOT USE, NOT STABLE YET
+${win_box_ip}     192.168.1.66
+${win_box_un}     SysAdmin
+${win_box_pw}     dellxps1
+${downloads_path}    /cygdrive/c/Users/SysAdmin/Downloads
+
+*** Keywords ***
+Set Server
+    ${SERVER}    Catenate    SEPARATOR=    ${SERVER_URL}    :4444/wd/hub
+    Set Suite Variable    ${SERVER}

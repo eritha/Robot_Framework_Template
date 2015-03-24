@@ -1,0 +1,49 @@
+*** Settings ***
+Documentation     /* LIST KEYWORD REUSE FOR COMPANY SETTING */
+Library           Selenium2Library
+Resource          ../../conf/selenium_connect.txt
+
+*** Keywords ***
+Set Company Info
+    [Arguments]    ${co_name}    ${co_id}    ${co_phone}    ${co_address}    ${co_city}    ${co_state}
+    ...    ${co_postal_code}    ${co_country}    ${co_industry}    ${co_currency}    ${co_pdf_temp}
+    [Documentation]    COMMON_KEY: Set company info
+    Wait Until Page Contains Element    id=CompanyName    ${TIMEOUT}
+    Run Keyword If    '${co_name}' <> '${EMPTY}'    Input Text    id=CompanyName    ${co_name}
+    Run Keyword If    '${co_id}' <> '${EMPTY}'    Input Text    id=CompanyCompanyIdentification    ${co_id}
+    Run Keyword If    '${co_phone}' <> '${EMPTY}'    Input Text    id=CompanyWorkPhone    ${co_phone}
+    Run Keyword If    '${co_country}' <> '${EMPTY}'    Select Dropdown    CompanyCountryId_chzn    ${co_country}
+    Run Keyword If    '${co_city}' <> '${EMPTY}'    Input Text    id=CompanyCity    ${co_city}
+    Run Keyword If    '${co_state}' <> '${EMPTY}'    Select Dropdown    CompanyStateId_chzn    ${co_state}
+    Run Keyword If    '${co_address}' <> '${EMPTY}'    Input Text    id=CompanyAddress    ${co_address}
+    Run Keyword If    '${co_postal_code}' <> '${EMPTY}'    Input Text    id=CompanyPostalCode    ${co_postal_code}
+    Run Keyword If    '${co_industry}' <> '${EMPTY}'    Select Dropdown    CompanyIndustryId_chzn    ${co_industry}
+    Run Keyword If    '${co_currency}' <> '${EMPTY}'    Select Dropdown    CompanyCurrency_chzn    ${co_currency}
+    Run Keyword If    '${co_pdf_temp}' <> '${EMPTY}'    Select Dropdown    CompanyTemplateId_chzn    ${co_pdf_temp}
+
+Set Company User Permissions
+    [Arguments]    ${allow_custom_temp}    ${allow_custom_categories}    ${allow_custom_mileage_rate}    ${allow_recall_paid_report}    ${enable_one_click_approval}    ${allow_change_department}
+    ...    ${allow_user_integrations}
+    [Documentation]    COMMON_KEY: Set company user permissions for all user in company
+    Wait Until Page Contains Element    id=CompanyAllowCustomTemplate    ${TIMEOUT}
+    Check Or Uncheck Checkbox    id=CompanyAllowCustomTemplate    ${allow_custom_temp.lower()}    # Checkbox for 'Allow Users To Select Their Own PDF Template '
+    Check Or Uncheck Checkbox    id=CompanyAllowCustomCategories    ${allow_custom_categories.lower()}    # Checkbox for 'Allow Users To Select Their Own Custom Categories'
+    Check Or Uncheck Checkbox    id=CompanyAllowCustomMileageRate    ${allow_custom_mileage_rate.lower()}    # Checkbox for 'Allow Users To Select Their Own Mileage Rate '
+    Check Or Uncheck Checkbox    id=CompanyAllowRecallPaidReport    ${allow_recall_paid_report.lower()}    # Checkbox for 'Allow Users To Recall A Report Once Marked Paid'
+    Check Or Uncheck Checkbox    id=CompanyOneClickApproval    ${enable_one_click_approval.lower()}    # Checkbox for 'Enable One-Click Approval'
+    Check Or Uncheck Checkbox    id=CompanyAllowChangeDepartment    ${allow_change_department.lower()}    # Checkbox for 'Allow Users To Change Their Department'
+    Check Or Uncheck Checkbox    id=CompanyAllowUserIntegrations    ${allow_user_integrations.lower()}    # Checkbox for 'Allow Users To Setup Their Own Integrations'
+
+Upload Company Logo
+    [Arguments]    ${rp_user_submit_sent_to}    ${rp_user_approves_sent_to}    ${expense_currency}
+    [Documentation]    COMMON_KEY: Upload and logo for company
+    Wait Until Page Contains Element    name=file    ${TIMEOUT}
+
+Allow Users To Setup Their Own Integrations
+    [Documentation]    COMMON_KEY: Set company user permisson, Allow Users To Setup Their Own Integrations
+    Click Setting Menu    settings    company    ${EMPTY}
+    Wait Until Page Contains Element    id=CompanyName    ${TIMEOUT}
+    Set Company User Permissions    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    Check    # Set "Allow Users To Setup Their Own Integrations"
+    Click Button    id=btnSave
+    Verify Page Show Message    success    Company updated

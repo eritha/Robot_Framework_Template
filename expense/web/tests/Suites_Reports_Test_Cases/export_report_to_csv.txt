@@ -1,0 +1,17 @@
+*** Settings ***
+Documentation     /* Suite Export report To CSV. */
+Suite Setup       Set Server
+Test Teardown     Close All Browsers
+Resource          ../../conf/selenium_connect.txt
+Library           Selenium2Library
+
+*** Variables ***
+
+*** Test Cases ***
+TC_Export unsubmitted report
+    [Tags]    Smoke Testing    Export Report    Suites Export Reports
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Click Ec Link    expenses    active    ${EMPTY}
+    Wait Until Expense Active Page Load
+    Delete All Current Expenses If Exists
+    # Create expense E_1:

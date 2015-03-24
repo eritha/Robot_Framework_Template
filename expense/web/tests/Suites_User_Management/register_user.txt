@@ -1,0 +1,150 @@
+*** Settings ***
+Documentation     /* Suite Register User */
+Suite Setup       Set Server
+Test Teardown     Close All Browsers
+Resource          ../../conf/selenium_connect.txt
+Library           Selenium2Library
+
+*** Variables ***
+
+*** Test Cases ***
+TC_Basic flow (B) - Create new account (0-sanityCheck)
+    [Documentation]    This is smoke testing
+    [Tags]    Smoke Testing    User Management    Register User    Completed
+    ${time}=    Evaluate    time.strftime("%d%m%Y%H%M%S", time.localtime())    time
+    Log    ${time}
+    Register New User    ${sever_test}    user${time}@mailinator.com    ${pass_general}    ${pass_general}
+    # Dialog (dialog is moveable)
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//span[@id='ui-dialog-title-upsellLightboxDialog'][text()='Welcome to TriNet Expense']
+    Run Keyword If    ${value}    Drag And Drop    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//span[@id='ui-dialog-title-upsellLightboxDialog'][text()='Welcome to TriNet Expense']    xpath=.//span[contains(@class,'action-content')][text()='Add Receipt']
+    Run Keyword If    ${value}    Click Button    id=btnCancel
+    Title Should Be    title=TriNet Expense - Users
+    Page Should Contain Element    xpath=.//span[@class='email'][text()='user${time}@mailinator.com']
+    Click Link    /settings/user
+    Verify User Setting Page    user${time}@mailinator.com
+    Log out Expense Cloud
+    Log In    ${sever_test}    user${time}@mailinator.com    ${pass_general}
+    Location Should Be    ${sever_test}/users/dashboard    # Vefify URL for Overview page
+    Title Should Be    title=TriNet Expense - Users
+
+TC_Selecting Log in (A4) - (1-High)
+    [Documentation]    This is test case detail
+    [Tags]    User Management    Register User    Completed    Not Mailinator
+    Open Browser And Go To Register Page    ${sever_test}
+    Input Values Register Page    invalid_username    ${EMPTY}    ${EMPTY}
+    Click Link    /users/login
+    Location Should Be    ${sever_test}/users/login
+    Title Should Be    title=TriNet Expense - Users Login
+    Input Values Login Page    ${user_owner}    ${pass_general}
+    Click Button    id=btnLogin    # Submit login
+    Location Should Be    ${sever_test}/users/dashboard
+    Title Should Be    title=TriNet Expense - Users
+    Log Out Expense Cloud
+    Click Link    /users/register
+    Location Should Be    ${sever_test}/users/register
+    Title Should Be    title=TriNet Expense - Users Register
+    #Textfield Value Should Be    id=UserEmail    ${EMPTY}
+    Element Text Should Be    id=UserEmail    ${EMPTY}
+
+TC_Unsubscribe when Sign up (A10) - (1- High)
+    [Documentation]    This is test case detail
+    ...    Can't run on dev02 due to Dev02 allow only two accounts register, others account will active before login
+    [Tags]    User Management    Register User    Completed Dev01
+    Open Browser And Go To Register Page    ${sever_test}
+    ${time}=    Evaluate    time.strftime("%d%m%Y%H%M%S", time.localtime())    time
+    Input Values Register Page    test${time}@mailinator.com    ${pass_general}    ${pass_general}
+    Unselect Checkbox    id=UserSubscribeNewsletter
+    Click Button    id=btnRegister    # Submit create user
+    Location Should Be    ${sever_test}/users/dashboard
+    Title Should Be    title=TriNet Expense - Users
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//span[@id='ui-dialog-title-upsellLightboxDialog'][text()='Welcome to TriNet Expense']
+    Run Keyword If    ${value}    Click Button    id=btnCancel
+    Click Link    /settings/user
+    Checkbox Should Not Be Selected    id=UserSubscribeNewsletter
+    Log Out Expense Cloud
+    Log In    ${sever_test}    test${time}@mailinator.com    ${pass_general}
+
+TC_Activation when sign-up (A11) - (1 - High)
+    [Documentation]    This is test case detail
+    [Tags]    User Management    Register User    Completed
+    : FOR    ${I}    IN RANGE    0    3
+    \    ${value}    Run Keyword And Return Status    Register Random New User    ${dev2_url}    ${pass_general}    ${pass_general}
+    \    Run Keyword If    '${value}' == 'False'    Log    Sever allow ${I} user register at this IP
+    \    Run Keyword If    '${value}' == 'False'    Exit For Loop
+
+TC_Case-sensitive in email addresses (A12) - (1 - High)
+    [Documentation]    This is test case detail
+    ...    Can't run on dev02 due to Dev02 allow only two accounts register, others account will active before login
+    [Tags]    User Management    Register User    Completed Dev01
+    ${time}=    Evaluate    time.strftime("%d%m%Y%H%M%S", time.localtime())    time
+    ${user_lower}=    Catenate    SEPARATOR=    test    ${time}    @mailinator.com
+    Register New User    ${sever_test}    ${user_lower}    ${pass_general}    ${pass_general}
+    Location Should Be    ${sever_test}/users/dashboard
+    Title Should Be    title=TriNet Expense - Users
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//span[@id='ui-dialog-title-upsellLightboxDialog'][text()='Welcome to TriNet Expense']
+    Run Keyword If    ${value}    Click Button    id=btnCancel
+    Log Out Expense Cloud
+    Log In    ${sever_test}    ${user_lower.upper()}    ${pass_general}
+
+TC_NOT case-sensitive in password (A13) - (2 - Medium)
+    [Documentation]    This is test case detail
+    ...    Can't run on dev02 due to Dev02 allow only two accounts register, others account will active before login
+    [Tags]    User Management    Register User    Completed Dev01
+    ${time}=    Evaluate    time.strftime("%d%m%Y%H%M%S", time.localtime())    time
+    Register New User    ${sever_test}    test${time}@mailinator.com    ${pass_general}    ${pass_general}
+    Location Should Be    ${sever_test}/users/dashboard
+    Title Should Be    title=TriNet Expense - Users
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//span[@id='ui-dialog-title-upsellLightboxDialog'][text()='Welcome to TriNet Expense']
+    Run Keyword If    ${value}    Click Button    id=btnCancel
+    Log Out Expense Cloud
+    Log In    ${sever_test}    test${time}@mailinator.com    ${pass_general.upper()}
+    Page Should Contain    Email or password are invalid
+
+TC_Sign up using inactive account (A14) - (2 - Medium)
+    # Wait for solution -> Wait two days
+
+TC_Register from mobile (A17) - (1-High)
+    # Wait for solution -> test on mobile
+
+TC_Sign up using an account which existing in a company with status PendingSystemApproval (A18) - (2 - Medium)
+    # Wait for solution    -> create account with status PendingSystemApprove
+
+TC_Activation
+    [Tags]    User Management    Register User With Invalid Fields
+    Register Random New User    ${sever_test}    ${pass_general}    ${pass_general}
+    # NOT Same Business / TC_Selecting Log in (A4) - (1-High) ------------------------------ OKKKKKKKKK
+    # NOT Same Business / TC_Unsubscribe when Sign up (A10) - (1- High)    ------------------------------ OKKKKKKKKK
+    # NOT Same Business / TC_Activation when sign-up (A11) - (1 - High)    ------------------------------ OKKKKKKKKK
+    # NOT Same Business / TC_Case-sensitive in email addresses (A12) - (1 - High)    ------------------------------ OKKKKKKKKK
+    # NOT Same Business / TC_NOT case-sensitive in password (A13) - (2 - Medium)    ------------------------------ OKKKKKKKKK
+    # NOT Same Business / TC_Sign up using inactive account (A14) - (2 - Medium)    # ++++++++++++++++ PENDING WAIT FOR SOLUTION ++++++++++++
+    # NOT Same Business / TC_Register from mobile (A17) - (1-High)    # ++++++++++++++++ PENDING WAIT FOR SOLUTION ++++++++++++
+    # NOT Same Business / TC_Sign up using an account which existing in a company with status PendingSystemApproval (A18) - (2 - Medium)    # ++++++++++++++++ PENDING WAIT FOR SOLUTION ++++++++++++
+
+*** Keywords ***
+Verify User Setting Page
+    [Arguments]    ${username}
+    [Documentation]    SUITE_KEY: Verify user info created
+    # USER INFORMATION
+    Wait Until Page Contains Element    xpath=.//input[@id='UserEmail'][@value='${username}']    ${TIMEWAIT}    # Wait user page display new account
+    Page Should Contain Element    id=UserEmail    # Verify email field
+    Page Should Contain Element    id=UserPassword    # Verify password field
+    Page Should Contain Element    xpath=.//a[@id='UpdatePasswordLink'][text()='[edit]']    # Verify password can editable
+    Page Should Contain Textfield    id=UserFirstname    # Verify firstname
+    Page Should Contain Textfield    id=UserLastname    # Verify lastname
+    Page Should Contain Textfield    id=UserCompany    # Verify company
+    Page Should Contain Element    xpath=.//a[@href='/companies/setup'][text()='[Set Up Your Company]']    # Verify user is an individual can setup company
+    Page Should Contain Textfield    id=UserReceiptEmail    # Verify receipt email
+    Page Should Contain Element    id=UserDepartmentId_chzn    # Verify department
+    Page Should Contain Element    id=UserCountryId_chzn    # Verify country
+    Page Should Contain Textfield    id=UserZipcode    # Verify zipcode
+    Page Should Contain Element    id=UserStateId_chzn    # Verify State
+    Page Should Contain Textfield    id=UserCity    # Verify City
+    # EMAIL SETTING
+    Page Should Contain Checkbox    id=UserReceiveAccountNotices    # Verify checkbox 'Receive Account Notices'
+    Page Should Contain Checkbox    id=UserSubscribeNewsletter    # Verify checkbox 'Subscribe to newsletters. (monthly)'\
+    # Digital Signature
+    Page Should Contain Element    id=signatureBox    # Verify Digital Signature
+    Page Should Contain Checkbox    id=UserSignature    # Verify check box 'Digitally sign your reports online so you'll never have to print and sign them.'
+    # Button Save
+    Page Should Contain Button    id=btnSaveSettings    # Verify button save

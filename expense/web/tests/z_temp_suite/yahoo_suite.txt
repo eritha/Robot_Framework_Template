@@ -1,0 +1,41 @@
+*** Settings ***
+Documentation     Integrating Selenium, Sikuli into Robot Framework
+Test Setup        Login To Yahoo Mail    ${user_name}    ${password}
+Test Teardown     Tear Test Down
+Library           Selenium2Library    15    # Selenium library
+Library           Remote    http://localhost:${port}    # Sikuli
+Library           Screenshot    # Taking screenshots when a test fails
+Library           SikuliRemoteLibrary.SikuliRemoteLibrary
+
+*** Variables ***
+${url}            http://mail.yahoo.com    # Yahoo mail URL
+${browser}        ff    # Browser
+${user_name}      ec_bkapprover@yahoo.com    # User name
+${password}       Lhvcreate9    # Password
+${port}           8270    # Default port number for the remote server
+${data_path}      c:\robot\data    # Sikuli images
+${similarity}     0.90    # Used in Sikuli image comparison
+${timeout}        10    # Time to wait for objects
+
+*** Testcases ***
+login To Yahoo Mail Test Case
+    Wait Until Page Contains Element    id=mnp-search_box    ${timeout}
+    Input Text    id=mnp-search_box    ENGLISH
+    Object Exists    ${data_path}\search_box_left.png    ${similarity}
+
+*** Keywords ***
+Login To Yahoo Mail
+    [Arguments]    ${user}    ${pass}
+    [Documentation]    This keyword logs user into Yahoo mail
+    Open Browser    ${url}    ${browser}    http://localhost:4444/wd/hub
+    Wait Until Page Contains Element    username
+    Input Text    username    ${user}
+    Input Password    passwd    ${pass}
+    Click Button    .save
+    Wait Until Page Contains Element    toolbar
+    Click Object    ${data_path}\maximize.png
+    Sleep    1
+
+Tear Test Down
+    Run Keyword If Test Failed    Take Screenshot
+    Close All Browsers

@@ -1,0 +1,15 @@
+{
+    "dev05":{
+      "ip":"50.18.193.18",
+      "un":"dev05app",
+      "keyfile":"dev05key",
+      "keyfile_pass" : "m0nst3renergy",
+      "port":2754,
+      "mysql" : {
+            "user" : "dev05app_user",
+            "password" : "304J4szcp![7",
+            "database" : "dev05app_main05",
+            "reset_file" : "reset_db.sql"
+        }
+   }
+}

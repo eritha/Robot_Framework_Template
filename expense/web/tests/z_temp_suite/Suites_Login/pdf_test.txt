@@ -1,0 +1,67 @@
+*** Settings ***
+Documentation     Tests to ensure PDF is outputting correctly
+Suite Setup       Category Mapper    #Library    ../lib/ssh_connect.py    dev05    #Test Teardown    Close All Browsers    #Suite Teardown
+...               #Reset DB
+Resource          ../../conf/selenium_connect.txt
+
+*** Variables ***
+${username}       jack@app7.com
+${password}       password2
+${url}            http://www.trinetexpense.com
+
+*** Test Cases ***
+Expense Test
+    #Register User    ${url}    ${username}    ${password}    ${password}
+    #Set Server
+    Close All Browsers
+
+*** Keywords ***
+Set Server And Register
+    Set Server
+    #Register User    ${url}    ${username}    ${password}    ${password}
+    #Log Out
+
+Login And Create Category Map
+    Log In    ${url}    ${username}    ${password}
+    Press Key    id=acctbox4    \\27
+    Click Link    /expenses/active
+    Wait Until Page Contains Element    //*[@id="btnAddExpense"]
+    Click Element    id=btnAddExpense
+    Click Element    xpath=//*[@id="grid"]/div[2]/div/div[2]/div[2]/div[4]/div/div
+    ${CATEGORY_MAP}    Create Category Map
+    Set Suite Variable    ${CATEGORY_MAP}
+
+Create Expense
+    [Arguments]    ${num_expenses}
+    Log In    ${url}    ${username}    ${password}
+    Press Key    id=acctbox4    \\27
+    Click Link    /expenses/active
+    Delete All Current Expenses
+    : FOR    ${I}    IN RANGE    0    ${num_expenses}
+    \    Wait Until Page Contains Element    //*[@id="btnAddExpense"]
+    \    Click Element    id=btnAddExpense
+    \    Wait Until Page Contains Element    //*[@id="grid"]/div[2]/div/div[2]/div[2]/div[1]/input
+    \    Input Text    xpath=//*[@id="grid"]/div[2]/div/div[2]/div[2]/div[3]/div/input    Test Merch ${I}
+    \    Click Element    xpath=//*[@id="grid"]/div[2]/div/div[2]/div[2]/div[4]/div/div
+    \    Create Category Map
+    \    FAIL
+    \    ${category_no}    Temp Select Random Category
+    \    ${category_no}    Select Random Category
+    \    #\    ${random}    Evaluate    random.randint(1, 1000)    random
+    \    Input Text    xpath=//*[@id="grid"]/div[2]/div/div[2]/div[2]/div[5]/div/input    ${random}
+    \    Run Keyword Unless    '${category_no}' == '5'    Input Text    xpath=//*[@id="grid"]/div[2]/div/div[2]/div[2]/div[5]/div/input    ${random}
+    \    Click Element    xpath=//*[@id="grid"]/div[4]/div[1]/a
+    \    Add Receipt to Expense Line Item
+    Create Report From All Expenses
+    Verify Report Download
+
+Category Mapper
+    Log In    ${url}    ${username}    ${password}
+    Run Keyword and Ignore Error    Press Key    id=acctbox4    \\27
+    Click Link    /expenses/active
+    Wait Until Page Contains Element    //*[@id="btnAddExpense"]
+    Click Element    id=btnAddExpense
+    Wait Until Page Contains Element    //*[@id="grid"]/div[2]/div/div[2]/div[2]/div[1]/input
+    Click Element    xpath=//*[@id="grid"]/div[2]/div/div[2]/div[2]/div[4]/div/div
+    ${cat_map}    Create Category Map
+    Set Suite Variable    ${cat_map}

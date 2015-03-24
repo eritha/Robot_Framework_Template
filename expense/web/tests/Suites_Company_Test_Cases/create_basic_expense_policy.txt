@@ -1,0 +1,83 @@
+*** Settings ***
+Documentation     ExpenseCloud Login testing
+Suite Setup       Set Server
+Test Teardown     Close All Browsers
+Resource          ../../conf/selenium_connect.txt
+Library           Selenium2Library
+
+*** Variables ***
+${expense_site}    https://dev02.app7.com/
+${unsubmitted_expenses}    Unsubmitted Expenses
+#XPATH:
+#VALUES
+#NOTE IF YOU CHANGE THESE VALUES YOU ALSO NEED TO UPDATE THE VALUES FOR Set Basic Company Policies Arguments
+${emptyspace}     ${EMPTY}
+${receipt_for_amounts}    51
+${date_of_expense_over}    1
+${max_ex_amount}    71
+${max_ex_distance}    32
+${Unknown_response}    No
+
+*** Test Cases ***
+TCA0_Basic flow (B) - Create basic expense policy by paid CO (0-sanityCheck)
+    [Documentation]    This is smoke testing for suite "Create Basic Expense Policy".
+    [Tags]    Smoke Testing    Basic Policies    Policies    Completed    Not Mailinator
+    # Rule:    Need define name correct with confluence "Basic flow (B) - Create basic expense policy by paid CO (0-sanityCheck)"
+    # Rule:    Create tag for TC, "Smoke Testing" tag for each basic flow TC, add tag completed/ Pending/ Bug for each TC
+    # Suggest: May add Documentation for each Tc
+    # User logs in as paid company owner
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    # Fix: Due to we need create new report to test this case, so we must delete all report exist.
+    Delete All Reports
+    Delete All Current Expenses If Exists
+    Set Basic Company Policies Clear
+    Delete All Company Per Diem Policies Policies
+    Delete All Company Expense Policies
+    # Set basic company
+    Set Basic Company Policies    ${receipt_for_amounts}    ${date_of_expense_over}    ${max_ex_amount}    ${max_ex_distance}    ${Unknown_response}
+    Wait Until Page Contains    Saved successfully.    ${TIMEWAIT}
+    # Fix:    Create expense with input basic value and submit to unsubmited report ( CREATE REPORT DYNAMIC)
+    Select Main Menu    expenses    active
+    Wait Until Expense Active Page Load
+    # 1. Create expense with Receipt required for amounts over $${receipt_for_amounts}.
+    ${invalid_receipt_for_amounts}=    Evaluate    ${receipt_for_amounts}+1
+    ${valid_receipt_for_amounts}=    Evaluate    ${receipt_for_amounts}-1
+    Create Expense And Input Basic Values    ${EMPTY}    Receipt required for amounts over    hotels    ${EMPTY}    ${invalid_receipt_for_amounts}    ${EMPTY}
+    # 2. Create expense with Date of expense is over ${receipt_for_amounts} day.
+    ${current_date}=    Get current day
+    ${number_period_date}=    Evaluate    ${date_of_expense_over}+2    # Rule date + 2 day
+    ${prev_period_dade}=    Get Prev Date    ${current_date}    ${number_period_date}
+    Create Expense And Input Basic Values    ${prev_period_dade}    Date of expense is over ${date_of_expense_over} day.    meals    ${EMPTY}    ${valid_receipt_for_amounts}    ${EMPTY}
+    # 3. Create expense with Amount of expense is over $${max_ex_amount}.
+    ${invalid_max_ex_amount}=    Evaluate    ${max_ex_amount}+1
+    Create Expense And Input Basic Values    ${EMPTY}    Amount of expense is over "${max_ex_amount}".    meals    ${EMPTY}    ${invalid_max_ex_amount}    ${EMPTY}
+    # 4. Create expense with Mileage of expense is over ${max_ex_distance} Miles/KM.
+    ${invalid_max_ex_distance}=    Evaluate    ${max_ex_distance}+1
+    Create Expense And Input Basic Values    ${EMPTY}    Mileage of expense is over "${max_ex_distance}" Miles/KM.    mileage    ${EMPTY}    ${invalid_max_ex_distance}    ${EMPTY}
+    # 5. Create expense with The category "Unknown" is not allowed to be used by your company.
+    Create Expense And Input Basic Values    ${EMPTY}    The category "Unknown" is not allowed to be used by your company    unknown    ${EMPTY}    35    ${EMPTY}
+    Submit Report All Curent Expense
+    # Verify invalid values for basic expense policies
+    Wait Until Page Contains    Expense Policy Violations    ${TIMEOUT}
+    Page Should Contain    Receipt required for amounts over $${receipt_for_amounts}.
+    Page Should Contain    Amount of expense is over $${max_ex_amount}.
+    Page Should Contain    Mileage of expense is over ${max_ex_distance} Miles/KM.
+    Page Should Contain    Date of expense is over ${date_of_expense_over} day.
+    Run Keyword If    '${Unknown_response}' == 'No'    Page Should Contain    The category "Unknown" is not allowed to be used by your company
+    # Verify the policies icons in each expense policy violation
+    Wait Until Page Contains    Expense Policy Violations    ${TIMEOUT}
+    Verify The Tooltip Expense Policy    Receipt required for amounts over $${receipt_for_amounts}.
+    Verify The Tooltip Expense Policy    Amount of expense is over $${max_ex_amount}.
+    Verify The Tooltip Expense Policy    Mileage of expense is over ${max_ex_distance} Miles/KM.
+    Verify The Tooltip Expense Policy    Date of expense is over ${date_of_expense_over} day.
+    Run Keyword If    '${Unknown_response}' == 'No'    Verify The Tooltip Expense Policy    The category "Unknown" is not allowed to be used by your company
+    # Unset basic company policies
+    Set Basic Company Policies Clear
+    #    Set Basic Company Policies    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    Yes
+    Wait Until Page Contains    Saved successfully.    ${TIMEWAIT}
+
+*** Keywords ***
+Verify The Tooltip Expense Policy
+    [Arguments]    ${msg_tooltip}
+    [Documentation]    COMMON_KEY: Verify the policies icons in each expense policy violation
+    Page Should Contain Element    xpath=.//div[@class='violation-container']/sup[@title='${msg_tooltip}']

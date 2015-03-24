@@ -1,0 +1,11 @@
+*** Settings ***
+Documentation     /* COMMON KEY for Suite User Management */
+Resource          ../../conf/selenium_connect.txt
+Library           Selenium2Library
+
+*** Keywords ***
+Verify Message Error Show
+    [Arguments]    ${msg_show}
+    [Documentation]    COMMON KEY: Verify message show in register page
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[@class="msg br-5 error"]/p
+    Run Keyword If    ${value}    Element Should Contain    xpath=.//div[@class="msg br-5 error"]/p    ${msg_show}

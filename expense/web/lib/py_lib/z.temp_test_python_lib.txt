@@ -1,0 +1,8 @@
+*** Settings ***
+Library           Selenium2Library    #Library    AutoItLibrary
+Library           datetime_tools.py    # These are methods, written in RF, to map and change categories.
+
+*** Test Cases ***
+Test python lib
+    ${prev_date}=    Get Prev Date    Jun 29 2014
+    Log    ${prev_date}

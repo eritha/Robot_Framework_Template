@@ -1,0 +1,123 @@
+*** Settings ***
+Documentation     /* LIST KEYWORD REUSE FOR USER */
+Library           Selenium2Library
+Resource          ../../conf/selenium_connect.txt
+
+*** Keywords ***
+Select User
+    [Arguments]    ${user_name}
+    [Documentation]    COMMON_KEY: Select user name at manage user page
+    Wait Until Page Contains Element    xpath=.//a[contains(text(),'${user_name}')]    ${TIMEWAIT}    # Wait page contain user
+    Click Element    xpath=.//a[contains(text(),'${user_name}')]    # Click User to view edit user page
+
+Check User Row
+    [Arguments]    ${user_name}
+    [Documentation]    COMMON_KEY: Select checkbox row of user by user name
+    Wait Until Page Contains Element    xpath=.//a[contains(text(),'${user_name}')]    ${TIMEWAIT}    # Wait page contain user
+    Mouse Over    xpath=.//div[@id='pageManageUsers']//a[contains(text(),'${user_name}')]/parent::div/preceding-sibling::div/input    # Mouse over checkbox of user row
+    #Click Element    xpath=.//div[@id='pageManageUsers']//a[contains(text(),'${user_name}')]/parent::div/preceding-sibling::div/input    # Click to seclect check box of user
+    Select Checkbox    xpath=.//div[@id='pageManageUsers']//a[contains(text(),'${user_name}')]/parent::div/preceding-sibling::div/input    # Click to seclect check box of user
+
+Set User Role
+    [Arguments]    ${user_email}    ${role}
+    [Documentation]    COMMON_KEY: Access manages user page and set user role
+    Click Setting Menu    companies    manage_users    ${EMPTY}
+    Wait Until Gird Page Load    gridManageUsers    Empty user
+    Set Role Employee    ${user_email}    ${role}    # Set role
+    Click Element    xpath=.//div[@id='btnSave']//span[text()='Save']    # Click save button
+    Wait Until Page Contains Element    xpath=.//a[contains(text(),'${user_name}')]    ${TIMEOUT}
+
+Set Role Employee
+    [Arguments]    ${user_email}    ${role}
+    [Documentation]    COMMON_KEY: Set user role for employee
+    Select User    ${user_email}    # Click Employee need to set role
+    Wait Until Page Contains    Edit User Information    ${TIMEOUT}    # Wait Edit User Information display
+    Set User Permissions    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${role}    # Slect dropdown role
+    Click Element    id=btnSave    # Click button save
+
+Set User Permissions
+    [Arguments]    ${first_name}    ${last_name}    ${emp_id}    ${vendor_payroll_id}    ${department}    ${location}
+    ...    ${role}
+    [Documentation]    COMMON_KEY: Set User Permissions for employee
+    Wait Until Page Contains Element    id=UserFirstname    ${TIMEOUT}
+    Run Keyword If    '${first_name}' <> '${EMPTY}'    Input Text    id=UserFirstname    ${first_name}
+    Run Keyword If    '${last_name}' <> '${EMPTY}'    Input Text    id=UserLastname    ${last_name}
+    Run Keyword If    '${emp_id}' <> '${EMPTY}'    Input Text    id=UserEmployee    ${emp_id}
+    Run Keyword If    '${vendor_payroll_id}' <> '${EMPTY}'    Input Text    id=UserVendorPayroll    ${vendor_payroll_id}
+    Run Keyword If    '${department}' <> '${EMPTY}'    Select Dropdown    UserDepartmentId_chzn    ${department}
+    Run Keyword If    '${location}' <> '${EMPTY}'    Select Dropdown    UserLocationId_chzn    ${location}
+    Run Keyword If    '${role}' <> '${EMPTY}'    Select Dropdown    UserRole_chzn    ${role}
+
+Set Expense Permissions
+    [Arguments]    ${rp_user_submit_sent_to}    ${rp_user_approves_sent_to}    ${expense_currency}
+    [Documentation]    COMMON_KEY: Set Expense Permissions for employee
+    Wait Until Page Contains Element    id=UserApproverEmail_chzn    ${TIMEOUT}
+    Run Keyword If    '${rp_user_submit_sent_to}' <> '${EMPTY}'    Select Dropdown    UserApproverEmail_chzn    ${rp_user_submit_sent_to}    ELSE IF    '${rp_user_approves_sent_to}' <> '${EMPTY}'
+    ...    Select Dropdown    UserApproverEmail2_chzn    ${rp_user_approves_sent_to}    ELSE IF    '${expense_currency}' <> '${EMPTY}'    Select Dropdown
+    ...    ExpenseCurrency_chzn    ${expense_currency}
+
+Assign User License
+    [Arguments]    ${user_name}    ${time_license}
+    [Documentation]    COMMON_KEY: Select user row and click assign license, then check check and uncheck time license, click button "Assign"
+    ...    Ex: Assign User License | prod_myapprover@yahoo.com | Check
+    Wait Until Gird Page Load    pageManageUsers    ${EMPTY}
+    Check User Row    ${user_name}    # Check user row (select checkbox)
+    Assign License    ${user_name}    ${time_license}
+
+Assign License ABC
+    [Arguments]    ${user_name}    ${time_license}
+    [Documentation]    COMMON_KEY: Assign license for one or more user
+    Click Element    id=btnAssignLicenses
+    ${val_success}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//p[text()='You have successfully assigned a license.']    ${TIMEWAIT}
+    Run Keyword If    ${val_success}    Click Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//span[@id='ui-dialog-title-ecDialog']/following-sibling::a
+    # Dev02: ${val_confirm}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//div[@id='saveAsignLicense']    1s
+    ${val_confirm}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//div[@id='btnConfirmAssign'][contains(@style,'display: block;')]/div[@id='saveAsignLicense']    ${TIMESLEEP}
+    Run Keyword If    '${time_license}' <> '${EMPTY}'    Check Or Uncheck Checkbox    id=timeAddon    ${time_license}    # If assign license have time license
+    Run Keyword If    ${val_confirm}    Click Element    id=saveAsignLicense    # Click Assign license
+    # Dev02: ${val_error}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]/div[@id='ecDialog']/p[text()='You cannot assign a license to ${user_name} because this user has been assigned a license.']    ${TIMESLEEP}
+    # Dev02: Run Keyword If    ${val_error}    Click Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//span[@id='ui-dialog-title-ecDialog']/following-sibling::a    # Close dialog Error
+    # Dev02: Run Keyword If    ${val_error}    Click Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//div[@id='cancelAsignLicense']    # Click cancel dialog assign
+    ${val_error}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//div[text()='All selected user(s) already have a license assigned.']    ${TIMESLEEP}
+    Run Keyword If    ${val_error}    Click Element    id=okAsignLicense
+    Log    User '${user_name}' has been assigned a license.
+
+Assign License
+    [Arguments]    ${user_name}    ${time_license}
+    [Documentation]    COMMON_KEY: Assign license for one or more user
+    Click Element    id=btnAssignLicenses
+    Log    EXPENSE & TIME LICENSE
+    ${val_confirm_expense_license}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//div[contains(text(),'You are about to assign an Expense license to the selected user(s)')]    ${TIMESLEEP}
+    Run Keyword If    '${time_license}' <> '${EMPTY}'    Check Or Uncheck Checkbox    id=timeAddon    ${time_license}    # Checkbox for time license
+    Run Keyword If    ${val_confirm_expense_license}    Click Element    id=saveAsignLicense    # Click Assign expsne license
+    Run Keyword If    ${val_confirm_expense_license}    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//p[text()='You have successfully assigned a license.']    ${TIMEWAIT}    # Verify assign license successfully
+    Log    TIME LICENSE
+    ${val_confirm_time_license}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//div[text()='Are you sure you want to assign the Time license for the selected user(s)?']
+    Run Keyword If    ${val_confirm_time_license}    Click Element    id=saveAsignLicense    # Click Assign license
+    Log    CLOSE DIALOG ASSIGN LICENSE SUCCESSFULLY or ERROR WHEN USER HAS ASSIGNED LICENSE
+    ${val_close_popup}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//a/span[text()='close']    ${TIMESLEEP}    # Check popup exist
+    Sleep    1s
+    Run Keyword If    ${val_close_popup}    Click Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//a/span[text()='close']    # Close popup after assign successfully.
+    ${val_close_popup_sc}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//a/span[text()='close']    ${TIMESLEEP}    # Check popup exist
+    Sleep    200ms
+    Run Keyword If    ${val_close_popup_sc}    Click Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//a/span[text()='close']    # Close popup after assign successfully.
+
+Remove User License
+    [Arguments]    ${user_name}    ${time_license}
+    [Documentation]    COMMON_KEY: Select user row and click assign license
+    Wait Until Gird Page Load    pageManageUsers    ${EMPTY}
+    Check User Row    ${user_name}    # Check user row (select checkbox)
+    Remove License    ${user_name}    ${time_license}
+
+Remove License
+    [Arguments]    ${user_name}    ${time_license}
+    [Documentation]    COMMON_KEY: Remove license of one or more user
+    Click Element    id=btnRemoveLicenses
+    ${remove_confirm}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//div[@id='removeLicense']    ${TIMEWAIT}
+    Run Keyword If    '${time_license}' <> '${EMPTY}'    Check Or Uncheck Checkbox    id=timeAddon    ${time_license}    # Check or uncheck to remove time license
+    Run Keyword If    ${remove_confirm}    Click Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//div[@id='removeLicense']    # Click button confirm remove
+    Run Keyword If    ${remove_confirm}    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//p[text()='Removed license(s) successfully.']    1s    # Wait dialog remove success
+    Run Keyword If    ${remove_confirm}    Click Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//span[@id='ui-dialog-title-ecDialog']/following-sibling::a    # Close dialog remove success
+    ${val_error}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]/div[@id='ecDialog']/p[text()='You can not remove the license for user ${user_name} because this user has no license.']    ${TIMESLEEP}
+    Run Keyword If    ${val_error}    Click Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//span[@id='ui-dialog-title-ecDialog']/following-sibling::a    # Close error dialog
+    Log    User '${user_name}' removed license(s) successfully.

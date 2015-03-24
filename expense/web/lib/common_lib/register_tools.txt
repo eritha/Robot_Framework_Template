@@ -1,0 +1,70 @@
+*** Settings ***
+Documentation     /* LIST KEYWORD REUSE FOR REGITER PAGE */
+Library           Selenium2Library
+Resource          ../../conf/selenium_connect.txt
+
+*** Keywords ***
+Register New User
+    [Arguments]    ${url_sever}    ${username}    ${password}    ${re_password}
+    [Documentation]    COMMON_KEY: Open expense page, input username & password and submit to create new user
+    Open Browser And Go To Register Page    ${url_sever}
+    Input New User And Submit    ${username}    ${password}    ${re_password}
+
+Open Browser And Go To Register Page
+    [Arguments]    ${url_sever}
+    [Documentation]    COMMON_KEY: Open expense browser and access Register page
+    Set Server
+    # Pass Execution
+    ${kw}=    Register Keyword To Run On Failure    Nothing
+    ${value}    Run Keyword And Return Status    Select Window    title=TriNet Expense - Users Login
+    Run Keyword If    ${value}    Click Link    /users/register    ELSE    Open Expense Cloud Browser    ${url_sever}
+    Click Link    /users/register
+    Register Keyword To Run On Failure    ${kw}
+    Maximize Browser Window
+    Delete All Cookies
+    Set Selenium Speed    ${DELAY}
+    Set Selenium Timeout    ${TIMEOUT}
+    #Title Should Be    title=TriNet Expense - Expenses Software | Small Business Expense Report Tracking Software
+    #Click Link    /users/register
+    Verify Register Page
+
+Verify Register Page
+    [Documentation]    SUB keyword for "Open Browser And Go To Register Page".
+    ...    Verify exist elements on register page
+    Location Should Be    ${url_sever}/users/register    # Vefify URL
+    Title Should Be    title=TriNet Expense - Users Register    # Vefify title of register page
+    Page Should Contain Element    id=UserEmail    # Vefify textbox email
+    Page Should Contain Element    id=UserPassword    # Vefify textbox password
+    Page Should Contain Element    id=UserConfirmPassword    # Vefify textbox confirm password
+    Page Should Contain Checkbox    id=UserSubscribeNewsletter    # Vefify checkbox 'Sign up to receive product updates and news'
+    Page Should Contain Button    id=btnRegister    # Vefify button create account
+    Page Should Contain Link    id=lnkPrivacy    # Vefify privacy link
+    Page Should Contain Link    /pages/termsofuse    # Vefify terms link
+
+Input New User And Submit
+    [Arguments]    ${username}    ${password}    ${cf_password}
+    [Documentation]    COMMON_KEY: Input username & password to register new user
+    Input Values Register Page    ${username}    ${password}    ${cf_password}
+    Select Checkbox    id=UserSubscribeNewsletter
+    Click Button    id=btnRegister    # Submit create user
+
+Input Values Register Page
+    [Arguments]    ${username}    ${password}    ${cf_password}
+    [Documentation]    COMMON_KEY: Input username & password
+    Run Keyword If    '{username}' <> '${EMPTY}'    Input Text    id=UserEmail    ${username}    ELSE    Log
+    ...    Username is empty.    # Input username
+    Run Keyword If    '{password}' <> '${EMPTY}'    Input Text    id=UserPassword    ${password}    ELSE    Log
+    ...    Password is empty.    # Input password
+    Run Keyword If    '{cf_password}' <> '${EMPTY}'    Input Text    id=UserConfirmPassword    ${cf_password}    ELSE    Log
+    ...    Confirm password is empty.    # Input confirm password
+
+Register Random New User
+    [Arguments]    ${url_sever}    ${password}    ${re_password}
+    [Documentation]    SUITE_KEY: Open expense page, input random username, password and submit
+    ${time}=    Evaluate    time.strftime("%d%m%Y%H%M%S", time.localtime())    time
+    Register New User    ${url_sever}    test${time}@mailinator.com    ${password}    ${re_password}
+    Location Should Be    ${url_sever}/users/dashboard
+    Title Should Be    title=TriNet Expense - Users
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]//span[@id='ui-dialog-title-upsellLightboxDialog'][text()='Welcome to TriNet Expense']
+    Run Keyword If    ${value}    Click Button    id=btnCancel
+    Log Out Expense Cloud

@@ -1,0 +1,67 @@
+*** Settings ***
+Documentation     Create, view, edit expense
+Suite Setup       Set Server
+Test Teardown     Close All Browsers
+Resource          ../../conf/selenium_connect.txt
+Library           Selenium2Library    #Library    AutoItLibrary
+Library           ../../lib/py_lib/datetime_tools.py    # These are methods, written in RF, to map and change categories.    #Library    ImapLibrary
+
+*** Variables ***
+${netsuite}       catchuoinayxemsao
+${email}          ec_companyowner@yahoo.com
+${IEDriver}       C://driver//IEDriverServer.exe
+
+*** Test Cases ***
+Test Marketplace
+    #Set Environment Variable    webdriver.ie.driver    E:\\Automation\\RoboFramework\\Jars\\IEDriverServer.exe
+    #File Should Exist    C:\\driver\\IEDriverServer.exe
+    #Open Browser    https://dev02.trinetmarketplace.com/users/login    webdriver.ie.driver=C:\driver\IEDriverServer.exe
+    #Start Process    ${IEDriver}    #C:/Python27/IEDriverServer.exe
+    Open Browser    https://dev02.trinetmarketplace.com/users/login    chrome
+    #Open Browser    https://dev02.trinetmarketplace.com/users/login    internetexplorer
+    Wait Until Page Contains Element    id=UserEmail
+    Sleep    5s
+
+Test temp
+    #Example of getting the time in a specific format
+    ${time}=    Evaluate    time.strftime("%b %d %y", time.localtime())    time
+    log    time: ${time}    warn
+    ${year}=    Evaluate    time.strftime("%y", time.localtime())    time
+    log    time: ${year}    warn
+    ${count}=    Evaluate    ${3}*${3}
+    Log    ${count}    warn
+    #Choose File    ${downloads_path}
+    Log    ${count}
+    ${email_length} =    Get Length    ${email}
+    Log    ${email[:${email_length}-10]}    warn
+    #>>> Output: Verify Report name is shown in Report field in Air Travel line
+    ${yyyy}    ${mm}    ${dd}    Get Time    year,month,day
+    ${report_date}    Set Variable    ${yyyy}-${mm}-${dd}
+    ${report_date}    Set Variable    ${mm}/${dd}/${yyyy}
+    Log    ${report_date}
+    ${prev_date}=    Get Prev Date    Jun 29 2014
+    Log    ${prev_date}
+
+Test 01
+    ${random_string}    Generate Random String
+    ${time}=    Evaluate    time.strftime("%d%m%Y%H%M%S", time.localtime())    time
+    Log    user${time}
+
+Create Simple Test
+    Open Mailbox    server=imap.googlemail.com    user=vntestexpense@gmail.com    password=lhvtester9
+    Delete All Email Messages    self
+    ${LATEST}=    Wait For Mail    fromEmail=vntestexpense@yahoo.com    toEmail=vntestexpense@gmail.com    status=UNSEEN    timeout=150
+    ${HTML}=    Open Link from Mail    ${LATEST}
+    Should Contain    ${HTML}    Your email address has been updated
+    Close Mailbox
+
+Create Simple Test 01 yahoo.com
+    ${current_date}=    Get Current Day
+    ${date_ex01}=    Get Prev Date    ${current_date}    1
+    ${date_ex02}=    Get Prev Date    ${current_date}    20
+    ${date_ex03}=    Get Prev Date    ${current_date}    22
+    ${date_ex04}=    Get Prev Date    ${current_date}    15
+    ${time}=    Evaluate    time.strftime("%b %d %y", time.localtime())    time
+    log    time: ${time}    warn
+
+*** Keyword ***

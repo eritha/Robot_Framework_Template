@@ -1,0 +1,230 @@
+*** Settings ***
+Documentation     /* Suite Export Report To Quickbooks Integration */
+Suite Setup       Set Server
+Test Teardown     Close All Browsers
+Resource          ../../conf/selenium_connect.txt
+Library           Selenium2Library    60 sec
+
+*** Test Cases ***
+TCA0_Basic flow (B) - Export as Single Quickbooks Entry and Record as Check (0-sanityCheck)
+    [Tags]    Smoke Testing    Export Quickbooks    Suites Export Reports    Completed    Not Mailinator
+    Login QBO Site And Delete All Report By Payee    Aptana IDE
+    Logout Quickbook Online Page
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    id=background_msg_board_refresh_text
+    Run keyword If    ${value}    Click Element    id=background_msg_board_refresh_text    ELSE    Log    Page not contain background message.
+    Check And Setup QBO Integration If Not Exist    ${quickbookonline_user_id}    ${quickbookonline_password}    ${qbo_company_name}
+    Click Ec Link    expenses    active    ${EMPTY}
+    Wait Until Expense Active Page Load
+    Create Expense And Input Detail Values    ${EMPTY}    E_1    Hotels    ${EMPTY}    1    ${EMPTY}
+    ...    Aaron E Berhanu Sub    Aaron E Berhanu    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    Prepaid (Non-Reimbursable)    Billable    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Expense And Input Detail Values    ${EMPTY}    E_2    Mileage    ${EMPTY}    5    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    Prepaid (Non-Reimbursable)    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Expense And Input Basic Values    ${EMPTY}    E_3    Meals    ${EMPTY}    2    ${EMPTY}
+    Create Report With Input Report Name    Report_B    ${EMPTY}    ${EMPTY}    ${EMPTY}    Is    ${EMPTY}
+    Wait Until Page Contains    E_1    ${TIMEOUT}
+    Select Dropdown    exportType_chzn    ${quickbookonline}s Online - ${qbo_company_name} - ${user_owner_fullname}
+    Click Element    id=submitExport
+    #Title Should Be    TriNet Expense Reports
+    Title Should Be    TriNet Expense - Reports
+    Wait Until Page Contains    Export to QuickBooks Online
+    Select Radio Button    exportAs    radExportAsSingleEntry
+    Select Radio Button    recordAs_NR    radRecord_NR_AsCheck
+    Select Dropdown    ddlExport_NR_To_chzn    Aptana IDE
+    Select Dropdown    ddlBankAccount_NR_chzn    Chase Manhattan Bank
+    Click Element    id=submitReportBtn
+    Verify Page Show Message    success    Exported Successfully.
+    Close Browser
+    Login Quickbook Online Page    ${quickbookonline_user_id}    ${quickbookonline_password}
+    Select QBO Vertical Menu    Transactions    Expenses
+    Wait Until Page Contains Element    xpath=.//table/tr    ${TIMEOUT}
+    ${id_div_report_row}=    Get Id Div Row QBO Report By Payee Name    Aptana IDE
+    Click Element    xpath=.//div[@id='${id_div_report_row}']/table/tr/td[text()='Aptana IDE']
+    Wait Until QBO Show Report Detail    ${TIMEOUT}
+    #Verify E_1
+    ${id_div_E_1_row}=    Get Id Div Expense Row QBO Report By Merchant Name    E_1
+    Log    ${id_div_E_1_row}
+    Page Should Contain Element    xpath=.//div[@id='${id_div_E_1_row}']/table/tr/td/div[contains(@class,'billable')]
+    #Verify E_2
+    ${id_div_E_2_row}=    Get Id Div Expense Row QBO Report By Merchant Name    (5 miles). E_2
+    Log    ${id_div_E_2_row}
+    Page Should Not Contain Element    xpath=.//div[@id='${id_div_E_2_row}']/table/tr/td/div[contains(@class,'billable')]
+    #Verify E_3
+    ${id_div_E_3_row}=    Get Id Div Expense Row QBO Report By Merchant Name    E_3
+    Log    ${id_div_E_3_row}
+    Page Should Not Contain Element    xpath=.//div[@id='${id_div_E_3_row}']/table/tr/td/div[contains(@class,'billable')]
+
+*** Keywords ***
+Login QBO Site And Delete All Report By Payee
+    [Arguments]    ${payee_name}
+    [Documentation]    SUITE_KEY: Login Quickbook Online Site and delete all report exist by payee name
+    ...    Ex: Login QBO Site And Delete All Report By Payee | Aptana IDE
+    Login Quickbook Online Page    ${quickbookonline_user_id}    ${quickbookonline_password}
+    Select QBO Vertical Menu    Transactions    Expenses
+    Delete All QBO Reports    ${payee_name}
+
+Check And Setup QBO Integration If Not Exist
+    [Arguments]    ${quickbookonline_user_id}    ${quickbookonline_password}    ${proj_name}
+    Click Setting Menu    settings    report    ${EMPTY}
+    ${report_name}=    Catenate    ${quickbookonline}s Online    -    ${proj_name}    -    ${user_owner}
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//span[text()='${report_name} ']
+    Run Keyword If    ${value}    Log    QBO Integration existed.    ELSE    Delete And Setup QBO Integration    ${quickbookonline_user_id}
+    ...    ${quickbookonline_password}
+
+Delete And Setup QBO Integration
+    [Arguments]    ${quickbookonline_user_id}    ${quickbookonline_password}
+    [Documentation]    SUB keyword for "Check And Setup QBO Integration If Not Exist":
+    ...    Delete QBO, then instal QBO Integration again
+    Delete Connection Or Integration By Name If Exist    Qboe
+    Click Ec Link    settings    addons    ${EMPTY}
+    Element Text Should Be    xpath=.//*[@id='pageAddons']/h2    Add-Ons & Integrations
+    Wait Until Page Contains Element    xpath=.//*[@id='pageAddons']//li//*[text()='Connect with QuickBooks']
+    Click Element    xpath=.//*[@id='pageAddons']//li//*[text()='Connect with QuickBooks']
+    Sleep    3s
+    Select Window    title=Welcome to Intuit App Center
+    ${exist_loginpage}    Run Keyword And Return Status    Page Should Contain Element    name=Email
+    Run Keyword If    ${exist_loginpage}    Input Quickbook Online Account And Submit    ${quickbookonline_user_id}    ${quickbookonline_password}
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[@id='RealmSelectDiv']//big[contains(text(),"${qbo_company_name}")]    ${TIMEOUT}
+    #${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[@id='RealmSelectDiv']//big[contains(text(),"${qbo_company_name}")]
+    Run Keyword If    ${value}    Select QBO Company    ${qbo_company_name}    ELSE    Log    There is no company exist.
+    Wait Until Page Contains Element    id=authorizeBtn    ${TIMEWAIT}
+    Page Should Contain Button    id=authorizeBtn
+    Page Should Contain Element    xpath=.//*[@id='grantForm']/div/small/a[contains(.,'No, Thanks')]
+    Click Button    authorizeBtn
+    #Page Should Contain    TriNet Expense Intuit Anywhere Dev and QuickBooks are now connected!
+    Wait Until Page Contains    You have successfully connected TriNet Expense to your QuickBooks Company File!    ${TIMEWAIT}
+    #Close Browser
+    #Select Window    title=TriNet Expense Mappings
+    Select Window    title=TriNet Expense - Mappings
+    Verify Integration Mapping Displayed
+
+Login Quickbook Online Page
+    [Arguments]    ${username}    ${password}
+    [Documentation]    SUITE_KEY: Login into Quickbook Online page
+    ${kw}=    Register Keyword To Run On Failure    Nothing
+    ${value}    Run Keyword And Return Status    Go To    ${quickbookonline_site}
+    Run Keyword If    ${value}    Log    Netsuite Window is selected.    ELSE    Open Browser    ${quickbookonline_site}
+    ...    ${BROWSER}    remote_url=${SERVER}
+    Register Keyword To Run On Failure    ${kw}
+    Maximize Browser Window
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[@id='simplemodal-container'][contains(@class,"show")]    ${TIMEWAIT}
+    Run keyword If    ${value}    Click Link    link=No, Thanks    ELSE    Log    Page not display message.
+    Wait Until Page Contains Element    xpath=.//span/a[@href='https://qbo.intuit.com']    ${TIMEOUT}
+    Click Element    xpath=.//span/a[@href='https://qbo.intuit.com']
+    #Page Should Contain Textfield    id=login
+    Wait Until Page Contains Element    id=login    ${TIMEOUT}
+    Input Text    id=login    ${username}
+    Input Text    id=password    ${password}
+    Click Button    id=LoginButton
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//*[contains(text(),"${qbo_company_name}")]    ${TIMEWAIT}
+    Run Keyword If    ${value}    Select QBO Company    ${qbo_company_name}    ELSE    Log    There is no company exist.
+
+Logout Quickbook Online Page
+    [Documentation]    SUITE_KEY: Logout Quickbook Online page
+    Wait Until Page Contains Element    xpath=.//i[@class='hi hi-settings-o'][@data-id='iconNode']
+    Click Element    xpath=.//i[@class='hi hi-settings-o'][@data-id='iconNode']
+    Click Link    link=Sign Out
+    Wait Until Page Contains Element    id=login    ${TIMEOUT}
+    Sleep    ${TIMESLEEP}    # Wait Until Page Logout Successfull
+
+Select QBO Horizontal Menu
+    [Arguments]    ${menu_0}    ${menu_1}    ${menu_2}    ${menu_3}
+    [Documentation]    SUITE_KEY: Select horizontal QBO main menu.
+    ...    Ex: Select QBO Horizontal Menu
+    Click Element    xpath=.//div[@data-type="create"]
+    Mouse Over    xpath=.//div[contains(@class,'create')][contains(@style,'display: block;')]//div[@data-qbo-trackarea="expandedcreate"]//a[text()='Expense']
+    Sleep    500ms
+    Click Element    xpath=.//div[contains(@class,'create')][contains(@style,'display: block;')]//div[@data-qbo-trackarea="expandedcreate"]//a[text()='Expense']
+
+Select QBO Vertical Menu
+    [Arguments]    ${menu_0}    ${menu_1}
+    [Documentation]    SUITE_KEY: Select vertical menu QBO site.
+    ...    Ex: Select QBO Vertical Menu | Transactions | Expenses
+    Run Keyword If    '${menu_0}'== '${EMPTY}'    Wait Until Page Contains Element    xpath=.//div[@data-id='navContainerNode']//a/span[text()='${menu_0.title()}']    ${TIMEOUT}
+    Mouse Over    xpath=.//div[@data-id='navContainerNode']//a/span[text()='${menu_0.title()}']
+    Sleep    1s
+    Click Element    xpath=.//div[@data-id='navContainerNode']//a/span[text()='${menu_0.title()}']
+    Sleep    1s
+    Mouse Over    xpath=.//div[@data-id='navContainerNode']//a/span[text()='${menu_1.title()}']
+    Sleep    1s
+    Click Element    xpath=.//div[@data-id='navContainerNode']//a/span[text()='${menu_1.title()}']
+
+Select QBO Bottom Menu
+    [Arguments]    ${menu_0}    ${menu_1}
+    [Documentation]    SUITE_KEY: Select vertical menu QBO site. Ex: Select QBO Bottom Menu More Delete
+    Run Keyword If    '${menu_0}'== '${EMPTY}'    Wait Until Page Contains Element    xpath=.//div[@class='bottomCenterButton'][text()='${menu_0.title()}']    ${TIMEOUT}
+    Mouse Over    xpath=.//div[@class='bottomCenterButton'][text()='${menu_0.title()}']
+    Sleep    500ms
+    Click Element    xpath=.//div[@class='bottomCenterButton'][text()='${menu_0.title()}']
+    Sleep    500ms
+    Mouse Over    xpath=.//div[@class='tooltipOption'][text()='${menu_1.title()}']
+    Sleep    500ms
+    Click Element    xpath=.//div[@class='tooltipOption'][text()='${menu_1.title()}']
+
+Delete All QBO Reports
+    [Arguments]    ${payee_name}
+    [Documentation]    SUITE_KEY: Delete All QBO reports
+    : FOR    ${i}    IN RANGE    1    100
+    \    Wait Until Page Contains Element    xpath=.//table/tr    ${TIMEOUT}
+    \    Log    ${i}
+    \    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//table[@class="dgrid-row-table"]//td[text()='${payee_name}']
+    \    Run keyword If    ${value}    Select And Delete QBO Report    ${payee_name}    ELSE    Exit For Loop
+    \    Log    All QBO reports with payee name "${payee_name}" deleted
+
+Delete All QBO Reports AAAAAAAAA
+    [Arguments]    ${payee_name}
+    [Documentation]    SUITE_KEY: Delete All QBO reports
+    Wait Until Page Contains Element    xpath=.//table/tr    ${TIMEOUT}
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//table[@class="dgrid-row-table"]//td[text()='${payee_name}']
+    Run keyword If    ${value}    Select And Delete QBO Report    ${payee_name}    ELSE    Log    No reports exist.
+
+Select And Delete QBO Report
+    [Arguments]    ${payee_name}
+    [Documentation]    SUB keyword for "Delete All QBO Reports": Select a report and delete
+    ${id_div_report_row}=    Get Id Div Row QBO Report By Payee Name    ${payee_name}
+    Log    ${id_div_report_row}
+    Click Element    xpath=.//div[@id='${id_div_report_row}']/table/tr/td[text()='${payee_name}']
+    Wait Until QBO Show Report Detail    ${TIMEMAX}
+    Select QBO Bottom Menu    More    Delete
+    Click Element    xpath=.//button[@class='button primary'][text()="Yes"]
+    # Verify message deleted successfull show when page load too long
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[@class='toast-message-view slide-down-and-up']//span[contains(text(),'deleted')]    ${TIMEWAIT}
+    Run keyword If    '${value}' == 'False'    Wait Until Page Contains Element    xpath=.//div[@class='toast-message-view']    ${TIMEWAIT}
+    Wait Until Page Contains Element    xpath=.//table/tr    ${TIMEOUT}
+    ${value}    Run Keyword And Return Status    Confirm Action
+    Run keyword If    ${value}    Log    Page show dialog "Missing Transaction"!
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//table[@class="dgrid-row-table"]//td[text()='${payee_name}']
+    Run keyword If    ${value}    Select And Delete QBO Report    ${payee_name}    ELSE    Log    No reports exist.
+
+Wait Until QBO Show Report Detail
+    [Arguments]    ${TIMEWAIT}
+    [Documentation]    SUB keyword for "Select And Delete QBO Report": Wait report detail displayed
+    Wait Until Page Contains Element    xpath=.//div[text()='Account details']    ${TIMEWAIT}
+    Wait Until Page Contains Element    xpath=.//div[text()='Item details']    ${TIMEWAIT}
+
+Get Total Amount
+    [Documentation]    SUITE_KEY: Get total amout of report
+    ${amount_text} =    Get Text    xpath=.//strong[@class='amount']
+    ${length_text} =    Get Length    ${amount_text}
+    ${position}=    Evaluate    ${length_text}-4
+    ${amount_total}=    Set Variable    ${amount_text[:${position}]}
+    Log    ${amount_total}
+    [Return]    ${amount_total}
+
+Get Id Div Row QBO Report By Payee Name
+    [Arguments]    ${payee_name}
+    [Documentation]    SUITE_KEY: Get Id of div content report with payee name
+    Wait Until Page Contains Element    xpath=.//div/table/tr/td[text()='${payee_name}']    ${TIMEWAIT}
+    ${id_div_row}    Get Element Attribute    xpath=.//div/table/tr/td[text()='${payee_name}']/ancestor::div[contains(@class,'dgrid-row')]@id
+    [Return]    ${id_div_row}
+
+Get Id Div Expense Row QBO Report By Merchant Name
+    [Arguments]    ${mer_name}
+    [Documentation]    SUITE_KEY: Get Id of div content expense merchant name
+    Wait Until Page Contains Element    xpath=.//div/table/tr/td/div[text()='${mer_name}']    ${TIMEWAIT}
+    ${id_div_row}    Get Element Attribute    xpath=.//div/table/tr/td/div[text()='${mer_name}']/ancestor::div[@role='row']@id
+    [Return]    ${id_div_row}

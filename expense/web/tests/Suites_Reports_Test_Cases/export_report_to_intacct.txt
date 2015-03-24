@@ -1,0 +1,172 @@
+*** Settings ***
+Documentation     /* Suite Export Report To Intacct Integration */
+Suite Setup       Set Server
+Test Teardown     Close All Browsers
+Resource          ../../conf/selenium_connect.txt
+Library           Selenium2Library
+
+*** Test Cases ***
+TCA0_Basic flow (B) - Export unsubmitted report (0-sanityCheck)
+    [Tags]    Smoke Testing    Export Intacct    Suites Export Reports    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    id=background_msg_board_refresh_text
+    Run keyword If    ${value}    Click Element    id=background_msg_board_refresh_text    ELSE    Log    Page not contain background message.
+    Delete All Current Expenses If Exists
+    Delete And Access Integration Submit Form    ${intacct}
+    Input Intacct Account And Submit    ${intacct_user_id}    ${intacct_password}    ${intacct_employee_id}    ${intacct_company_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${intacct}
+    Access Integration Mapping    ${intacct}
+    Verify Integration Mapping Displayed
+    Wait Until Page Load    Empty category in Integration mapping
+    Synces Integration Data    ${intacct}    ${intacct_company_id}    ${user_owner_fullname}    ${intacct}'s data (${intacct_company_id}) is syncing.    ${EMPTY}
+    Click Ec Link    expenses    active    ${EMPTY}
+    Wait Until Expense Active Page Load
+    Create Expense And Input Detail Values    ${EMPTY}    E_1    Miscellaneous    Mobile    500    ${EMPTY}
+    ...    Project A    Dell Computer    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Expense And Input Detail Values    ${EMPTY}    E_2    Hotels    ${EMPTY}    1000    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    Prepaid (Non-Reimbursable)    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Report With Input Report Name    Report_B    ${EMPTY}    ${EMPTY}    ${EMPTY}    Is    ${EMPTY}
+    Wait Until Page Contains    E_1    ${TIMEOUT}
+    Dropdown Should Contain Connection Or Integration    exportType_chzn    ${intacct} - ${intacct_company_id} - ${user_owner_fullname}
+    Select Dropdown    exportType_chzn    ${intacct} - ${intacct_company_id} - ${user_owner_fullname}    #Intacct - demo12408769 - ec_companyowner@yahoo.com
+    Click Button    id=submitExport
+    ${yyyy}    ${mm}    ${dd}    Get Time    year,month,day
+    ${report_date}    Set Variable    ${mm}/${dd}/${yyyy}
+    #${report_date}=    Get Date Time Zone    America/Tijuana    %m/%d/%Y
+    Verify Message Export To Integration    Exported Successfully
+    Login Intacct Page    ${intacct_company_id}    ${intacct_user_id}    ${intacct_password}
+    Select Intacct Menu    Time & Expenses    My Expenses
+    Select Frame    id=iamain
+    ${report_row}=    Get Report Row Intacct    TriNet Expense Report - Report_B
+    Log    ${report_row}
+    Select Intacct Report Link    ${report_row}    View
+    Page Should Contain Element    xpath=.//span[@id='_obj__ENTITY'][contains(text(),'${intacct_employee_id}')]
+    Page Should Contain Element    xpath=.//span[@id='_obj__WHENCREATED'][contains(text(),'${report_date}')]
+    Page Should Contain Element    xpath=.//span[@id='_obj__PRENTRY_2_-_obj__AMOUNT'][text()='1,500.00']
+    Page Should Contain Element    xpath=.//span[@id='_obj__TOTALENTERED'][text()='1,500.00']
+    #Verify E_1
+    ${e1_row}=    Get Expense Row Intacct    E_1
+    Page Should Contain Element    xpath=.//tbody[@id='tbody__obj__PRENTRY']/tr[${e1_row}]//span[text()='500.00']
+    Click Element    xpath=.//tbody[@id='tbody__obj__PRENTRY']/tr[${e1_row}]//span[text()='E_1']
+    Click Element    xpath=.//a[@class='lineDetailsHelp']
+    Page Should Contain Element    xpath=.//ul[@class='assistedField']//span[contains(text(),'Project A')]
+    Page Should Contain Element    xpath=.//ul[@class='assistedField']//span[contains(text(),'Dell Computer')]
+    Sleep    500ms
+    Click Element    xpath=.//a[@class='lineDetailsHelp']
+    #Verify E_2
+    ${e2_row}=    Get Expense Row Intacct    E_2
+    Page Should Contain Element    xpath=.//tbody[@id='tbody__obj__PRENTRY']/tr[${e2_row}]//span[text()='1,000.00']
+    Reload Page
+    Confirm Action
+    Sleep    ${TIMEWAIT}
+    Select Intacct Menu    Time & Expenses    My Expenses
+    Select Frame    id=iamain
+    Wait Until Page Contains Element    xpath=.//font[@class='LISTTITLE'][contains(text(),'My Expenses')]    ${TIMEOUT}
+    Delete All Intacct Reports By Report Name    TriNet Expense Report - Report_B
+
+*** Keywords ***
+Login Intacct Page
+    [Arguments]    ${company_id}    ${username}    ${password}
+    [Documentation]    SUITE_KEY: Login Intacct Site
+    # Check Go to Intacct page, if not exist Intacct page, then Open new browser and access Intacct pages
+    ${value}    Run Keyword And Return Status    Go To    ${intacct_site}
+    Run keyword If    ${value}    Log    Available browser is running.    ELSE    Open Browser    ${intacct_site}
+    ...    ${BROWSER}    remote_url=${SERVER}
+    Maximize Browser Window
+    Wait Until Page Contains Element    id=company    ${TIMEOUT}
+    Input Text    id=company    ${company_id}
+    Input Text    id=login    ${username}
+    Input Text    id=passwd    ${password}
+    Click Button    id=retbutton
+    ${value}    Run Keyword And Return Status    Page Should Contain Checkbox    id=sysmessage_1001    # Check system show message to check PFF default
+    Run keyword If    ${value}    Select Checkbox And Submit    ELSE    Log    Page not contain page default PFF for old Firefox browser.
+    Wait Until Page Contains Element    xpath=.//div[@class='iamm_popup_menu_ieshim']//span[contains(text(),'${username}')]    ${TIMEOUT}
+    Sleep    ${TIMEWAIT}    # Wait page load due to Iframe, then Robot can't wait any element
+
+Select Checkbox And Submit
+    [Documentation]    SUB keyword for "Login Intacct Page": Click to pass message make PFF default
+    Select Checkbox    id=sysmessage_1001
+    Click Button    name=.ret
+
+Wait Until Intacct Page Load
+    [Documentation]    SUITE_KEY: Wait until intacct page load
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    id=iamain    ${TIMEOUT}
+    Run Keyword If    ${value}    Log    Intacct not display yet.    ELSE    Wait Until Intacct Page Load
+
+Select Intacct Menu
+    [Arguments]    ${menu_0}    ${menu_1}
+    [Documentation]    SUITE_KEY: Select horizontal main menu netsuite page
+    ...    Ex: Select Netsuite Menu Transactions Employees Enter Expense Reports List
+    Run Keyword If    '${menu_0}'== '${EMPTY}'    Log    Main menu is empty.    warn    ELSE    Mouse Over
+    ...    xpath=.//div[@class='iamenutitlewrapper']/span[text()='${menu_0}']
+    Sleep    1s    # Wait to see mouse over on parent menu
+    Run Keyword If    '${menu_1}'== '${EMPTY}'    Click Element    xpath=.//div[@class='iamenutitlewrapper']/span[text()='${menu_0}']    ELSE    Mouse Over    xpath=.//td[contains(@class,'iaitem')]/span[text()='${menu_1}']
+    Sleep    1s    # Wait to see mouse over on child menu / Or wait to click parent menu
+    Run Keyword If    '${menu_1}'== '${EMPTY}'    Log    This is the end menu.    ELSE    Click Element    xpath=.//td[contains(@class,'iaitem')]/span[text()='${menu_1.title()}']
+
+Get Report Row Intacct
+    [Arguments]    ${report_name}
+    [Documentation]    SUITE_KEY: Get report row content string "${report_name}"
+    ${report_row}    Evaluate    0
+    # Check report name exist or not, Get row number if exist
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//table[@id='listcontent']//tr[${report_row}]//font[contains(text(),'${report_name}')]
+    Run keyword If    ${value}    Set Suite Variable    ${return_row}    ${report_row}    ELSE    Get Report Row
+    ...    ${report_row}    ${report_name}
+    [Return]    ${return_row}
+
+Get Report Row
+    [Arguments]    ${report_row}    ${report_name}
+    [Documentation]    SUB keyword for "Get Report Row Intacct": Loop until page got report row
+    ${report_row}    Evaluate    ${report_row}+1
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//table[@id='listcontent']//tr[${report_row}]//font[contains(text(),'${report_name}')]
+    Run keyword If    ${value}    Set Suite Variable    ${return_row}    ${report_row}    ELSE    Get Report Row
+    ...    ${report_row}    ${report_name}
+
+Select Intacct Report Link
+    [Arguments]    ${ns_report_row}    ${text_link}
+    [Documentation]    SUITE_KEY: Select intacct report link by row and text link
+    ...    Ex: Select Intacct Report Link 0 View/Edit
+    Click Element    xpath=.//table[@id='listcontent']//tr[${ns_report_row}]//a[text()='${text_link}']
+    Confirm Action
+
+Get Expense Row Intacct
+    [Arguments]    ${expense_name}
+    [Documentation]    SUITE_KEY: Get expense row in report detail
+    ${ex_row}    Evaluate    0
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//tbody[@id='tbody__obj__PRENTRY']/tr[${ex_row}]//span[text()='${expense_name}']
+    Run keyword If    ${value}    Log    Got expense row.    ELSE    Get Expense Row    ${ex_row}
+    ...    ${expense_name}
+    [Return]    ${ex_row}
+
+Get Expense Row
+    [Arguments]    ${ex_row}    ${expense_name}
+    [Documentation]    SUB keyword for "Get Expense Row Intacct": Get expense row in report detail
+    ${ex_row}    Evaluate    ${ex_row}+1
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//tbody[@id='tbody__obj__PRENTRY']/tr[${ex_row}]//span[text()='${expense_name}']
+    Run keyword If    ${value}    Set Suite Variable    ${ex_row}    ${ex_row}    ELSE    Get Expense Row
+    ...    ${ex_row}    ${expense_name}
+
+Delete All Intacct Reports By Report Name
+    [Arguments]    ${report_name}
+    [Documentation]    SUITE_KEY: Delete all intacct report by report name
+    ${select_frame}    Run Keyword And Return Status    Page Should Contain Element    Select Frame    id=iamain
+    Run keyword If    ${select_frame}    Log    Frame 'iamain' was selected.
+    ${in_report_row}=    Get Report Row Intacct    ${report_name}
+    Click Element    xpath=.//table[@id='listcontent']//tr[3]//input[@type='checkbox']    # Select checkbox report to delete
+    Click Element    id=top_multidelete    # Click delete report
+    ${message}=    Confirm Action    # Click Ok to confirm delete
+    Should Be Equal    ${message}    You are about to permanently delete 1 records. This cannot be undone.
+    Sleep    ${TIMEWAIT}    # Wait until page delete report successfull, then reload current page
+    Check And Delete Exist Report    ${report_name}
+
+Check And Delete Exist Report
+    [Arguments]    ${report_name}
+    [Documentation]    SUB keyword for "Delete All Intacct Reports By Report Name": Check and delete exist report
+    ${select_frame}    Run Keyword And Return Status    Page Should Contain Element    Select Frame    id=iamain    # Select iframe
+    Run keyword If    ${select_frame}    Log    Frame 'iamain' was selected.
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//table[@id='listcontent']//font[contains(text(),'${report_name}')]    # Check and delete Intacct report if exist
+    Run keyword If    ${value}    Delete All Intacct Reports By Report Name    ${report_name}    ELSE    Log    All report deleted.

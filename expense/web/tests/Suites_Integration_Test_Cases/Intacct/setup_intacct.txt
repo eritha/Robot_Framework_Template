@@ -1,0 +1,160 @@
+*** Settings ***
+Documentation     /* Suite Setup Intacct Integraton */
+...               Author: Phuoc Ha
+Suite Setup       Set Server
+Test Teardown     Close All Browsers
+Resource          ../../../conf/selenium_connect.txt
+Library           Selenium2Library
+
+*** Variables ***
+${invalid_intacct_user_id}    "userABC102014
+${invalid_intacct_password}    invalid_pass
+${invalid_intacct_employee_id}    invalid_employee
+${invalid_intacct_company_id}    invalid_company
+
+*** Test Cases ***
+TCA0_Basic flow - Setup Intacct integration by individual (B) - (0-sanityCheck)
+    [Tags]    Smoke Testing    Setup Intacct    Suites Integration    Completed    Not Mailinator
+    Create Bulk Expenses And Submit Unsubmited Report    3    Miscellaneous    Mobile    ${intacct}
+    Delete And Access Integration Submit Form    ${intacct}
+    Input Intacct Account And Submit    ${intacct_user_id}    ${intacct_password}    ${intacct_employee_id}    ${intacct_company_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${intacct}
+    Access Integration Mapping    ${intacct}
+    Verify Integration Mapping Displayed
+    Click Setting Menu    settings    report    ${EMPTY}
+    ${intacct_report}=    Catenate    ${intacct}    -    ${intacct_company_id}    -    ${user_owner_fullname}
+    ...    -    ${intacct_employee_id}
+    #>>> OUTPUT<<<: Show string text (This string text joined from string "Intacct" and Company ID and Username user and Employee ID).
+    Page Should Contain    ${intacct_report}
+    #>>> OUTPUT<<<: System shows link Edit, Mark Default, Delete and Integration Mapping
+    Verify A Connection Or Integration Existed    ${intacct}    ${user_owner}
+    Opens An Unsubmitted Report And Exports To Integration    ${intacct}
+    Verify Message Export To Integration    Exported Successfully
+
+TCA1_Setup Intacct with incorrect information (A1) - (2-Medium)
+    [Tags]    Setup Intacct    Suites Integration    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Delete And Access Integration Submit Form    ${intacct}
+    Input Intacct Account And Submit    ${invalid_intacct_user_id}    ${invalid_intacct_password}    ${invalid_intacct_employee_id}    ${intacct_company_id}
+    Verify Message Intacct Show    The user login ${invalid_intacct_user_id} does not exist
+
+TCA2_Setup Intacct with invalid Integration credential (A2) - (2-medium)
+    [Tags]    Setup Intacct    Suites Integration    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Delete And Access Integration Submit Form    ${intacct}
+    Input Intacct Account And Submit    ${invalid_intacct_user_id}    ${invalid_intacct_password}    ${invalid_intacct_employee_id}    ${invalid_intacct_company_id}
+    Verify Message Intacct Show    The company title ${invalid_intacct_company_id} does not exist
+
+TCA3_Setup Intacct from Report Detail page (A3) - (2-medium)
+    [Tags]    Setup Intacct    Suites Integration    Completed    Not Mailinator
+    Create Bulk Expenses And Submit Unsubmited Report    3    Miscellaneous    Mobile    ${intacct}
+    Click Setting Menu    settings    report    ${EMPTY}
+    Delete All Current Connections Or Integrations
+    Select Main Menu    reports    user
+    Wait Until Report Page Load
+    #Select Dropdown    filterStatus_chzn    Unsubmitted Reports    # Filter unsubmited report
+    Wait Until Page Contains Element    xpath=.//div[@id='grid']//div[@data-row='0']/div[@data-col='2']    ${TIMEWAIT}
+    Click Element    xpath=.//div[@id='grid']//div[contains(@class,'r0')]/div[contains(@class,'c2')]/a    # Select the first report unsubmited row
+    Wait Until Report Detail Page Load
+    Click Element    id=lnkSettings
+    Verify A Connection Or Integration Not Exist    Approver
+    Verify A Connection Or Integration Not Exist    Approver2
+    Verify A Connection Or Integration Not Exist    Bookkeeper
+    Verify A Connection Or Integration Not Exist    ${intacct}
+    Verify A Connection Or Integration Not Exist    ${netsuite}
+    Verify A Connection Or Integration Not Exist    CSV
+    Page Should Contain Link    link=Add more integrations
+    Click Link    link=Add more integrations
+    Location Should Be    ${sever_test}/settings/addons/accounting
+    Title Should Be    title=TriNet Expense - Settings
+    Delete And Access Integration Submit Form    ${intacct}
+    Input Intacct Account And Submit    ${intacct_user_id}    ${intacct_password}    ${intacct_employee_id}    ${intacct_company_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${intacct}
+    Access Integration Mapping    ${intacct}
+    Verify Integration Mapping Displayed
+    Click Setting Menu    settings    report    ${EMPTY}
+    ${intacct_report}=    Catenate    ${intacct}    -    ${intacct_company_id}    -    ${user_owner_fullname}
+    ...    -    ${intacct_employee_id}
+    #>>> OUTPUT<<<: Show string text (This string text joined from string "Intacct" and Company ID and Username user and Employee ID).
+    Page Should Contain    ${intacct_report}
+    #>>> OUTPUT<<<: System shows link Edit, Mark Default, Delete and Integration Mapping
+    Verify A Connection Or Integration Existed    ${intacct}    ${user_owner}
+    Opens An Unsubmitted Report And Exports To Integration    ${intacct}
+    Verify Message Export To Integration    Exported Successfully
+
+TCA4_Setup integration by free user (A4) - (1-High)
+    [Tags]    Setup Intacct    Suites Integration    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_freeuser}    ${pass_general}
+    Click Setting Menu    settings    addons    ${EMPTY}
+    #Click Ec Link    settings    report    ${intacct}
+    Click Element    xpath=.//div[@id="content"]//ul/li[2]/div[2]/a[text()='Install']
+    #Location Should Be    ${sever_test}/settings/report/Intacct
+    Location Should Be    ${sever_test}/payments/pricing
+    Title Should Be    title=TriNet Expense - Free Expense Tracking | Free Online Business Expense Tracker
+
+TCA5_Setup integration with valid email on TO, CC text-boxes (A5) - (1-High)
+    [Tags]    Setup Intacct    Suites Integration    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    #Delete And Access Integration Submit Form    ${intacct}
+    Click Setting Menu    settings    addons    ${EMPTY}
+    Click Ec Link    settings    report    ${intacct}
+    Input Intacct Account    ${intacct_user_id}    ${intacct_password}    ${intacct_employee_id}    ${intacct_company_id}
+    Input Integration To CC    ${intacct}    ${user_invalid}    ${user_invalid}
+    Click Element    xpath=.//*[@id='${intacct}Integration']//button[contains(.,"Save")]
+    Verify Message Intacct Show    TO email is invalid
+
+TCA6_Setup the second Intacct connections (A6) - (1-High)
+    [Tags]    Setup Intacct    Suites Integration    Pending due to Intacct Guess password changed    Not Mailinator
+    Create Bulk Expenses And Submit Unsubmited Report    2    Miscellaneous    Mobile    ${intacct}
+    Delete And Access Integration Submit Form    ${intacct}
+    Input Intacct Account And Submit    ${intacct_user_id}    ${intacct_password}    ${intacct_employee_id}    ${intacct_company_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${intacct}
+    Click Element    xpath=.//div[@id="${intacct}Integration"]//span[text()='Close']
+    Access Integration Submit Form    ${intacct}
+    Input Intacct Account And Submit    ${intacct_user_id_guess}    ${intacct_password_guess}    ${intacct_employee_id_guess}    ${intacct_company_id_guess}
+    Verify System Show The Dialog Box Install Integration Successful    ${intacct}
+    Click Element    xpath=.//div[@id="${intacct}Integration"]//span[text()='Close']
+    Opens An Unsubmitted Report And Exports To Integration    ${intacct}
+    Verify Message Export To Integration    Exported Successfully
+
+TCA7_Setup more two Intacct connections (A7) - (2-Medium)
+    [Tags]    Setup Intacct    Suites Integration    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Delete And Access Integration Submit Form    ${intacct}
+    #Click Settings Menu    settings    addons    ${EMPTY}
+    #Click Ec Link    settings    report    ${intacct}
+    Input Intacct Account    ${intacct_user_id_guess}    ${intacct_password_guess}    ${intacct_employee_id_guess}    ${intacct_company_id_guess}
+    Input Integration To CC    ${intacct}    ${user_invalid}    ${user_invalid}
+    Click Element    xpath=.//*[@id='${intacct}Integration']//button[contains(.,"Save")]
+    Verify Message Intacct Show    TO email is invalid
+
+TCA8_Setup Intacct by paid user who belongs to a company (A8) - (1-High)
+    [Tags]    Setup Intacct    Suites Integration    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    # Step 2: Delete Intact Integration
+    Delete And Access Integration Submit Form    ${intacct}
+    Input Intacct Account And Submit    ${intacct_user_id}    ${intacct_password}    ${intacct_employee_id}    ${intacct_company_id}
+    Verify System Show The Dialog Box Install Integration Successful    ${intacct}
+    Click Element    xpath=.//div[@id="${intacct}Integration"]//span[text()='Close']
+    ${intacct_report}=    Catenate    ${intacct}    -    ${intacct_company_id}    -    ${user_owner_fullname}
+    ...    -    ${intacct_employee_id}
+    Page Should Contain    ${intacct_report}
+    Verify A Connection Or Integration Existed    ${intacct}    ${user_owner}
+    Verify Page Should Contain Connection Or Integration Link    ${intacct}    Click to allow company to access data
+    Verify Page Should Contain Connection Or Integration Link    ${intacct}    Set default
+    Verify Page Should Contain Connection Or Integration Link    ${intacct}    Edit
+    Verify Page Should Contain Connection Or Integration Link    ${intacct}    Delete
+
+Sub Level Entity is checked (A9) - (1-High)
+    Delete All Reports
+
+Shared/Distributed is checked (A10) - (1-High)
+    # NOT IMPLEMENT MANUAL (empty case)
+
+Submit Report Directly Without Policies Validation is checked (A11) - (1-High)
+
+*** Keywords ***
+Verify Message Intacct Show
+    [Arguments]    ${msg_show}
+    [Documentation]    SUITE_KEY: Verify intacct message show when enter invalid infor
+    Run Keyword If    '${msg_show}' == '${EMPTY}'    Element Text Should Be    id=intacctMessage    ${msg_show}

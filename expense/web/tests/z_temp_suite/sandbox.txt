@@ -1,0 +1,87 @@
+*** Settings ***
+Suite Setup       Set Server
+Test Teardown     Close All Browsers
+Library           Selenium2Library
+Resource          ../../conf/selenium_connect.txt
+Library           ImapLibrary
+Library           AutoItLibrary
+
+*** Variables ***
+${marketplace_site}    https://dev02.trinetmarketplace.com/
+#Library          ../../lib/py_lib/mail_tools.py    #    #Resource    ../../lib/py_lib/datetime_tools.py    #Imap library
+
+*** Test Cases ***
+TC test mail [Documentation]
+    Open Mail Box    server=imap.googlemail.com    user=vntestexpense@gmail.com    password=lhvtester9
+    Check Mail    UNSEEN    FROM    "brisingrit@gmail.com"
+
+Python test function
+    #${prev_start_tripdate}=    Get Prev Date    Jun0114
+    ${abc}=    Get Date Time Zone    America/Tijuana    %Y-%m-%d
+
+Create Simple Test
+    Open Mailbox    server=imap.googlemail.com    user=vntestexpense@gmail.com    password=lhvtester9
+    ${LATEST}=    Wait for Mail    fromEmail=brisingrit@gmail.com    toEmail=vntestexpense@gmail.com    timeout=300
+    ${HTML}=    Open Link From Mail    ${LATEST}
+    Should Contain    ${HTML}    Mail from Brisingrit to Vntestexpense 01
+    Close Mailbox
+
+TC test mail [Documentation]
+    Open Mailbox    server=imap.googlemail.com    user=user=vntestexpense@gmail.com    password=lhvtester9
+    #Open Mailbox    server=imap.googlemail.com    user=vntestexpense@gmail.com    password=lhvtester9
+    ${LATEST}=    Wait for Mail    fromEmail=brisingrit@gmail.com    toEmail=vntestexpense@gmail.com    timeout=1000
+    ${HTML}=    Open Link from Mail    ${LATEST}
+    Should Contain    ${HTML}    Mail from Brisingrit to Vntestexpense 01
+    Close Mailbox
+
+Create Simple Test 01
+    Open Mailbox    server=imap.googlemail.com    user=vntestexpense@gmail.com    password=lhvtester9
+    ${LATEST}=    Wait for Mail    fromEmail=vntestexpense@yahoo.com    toEmail=vntestexpense@gmail.com    status=UNSEEN    timeout=180
+    #${HTML}=    Open Link from Mail    ${LATEST}
+    #Should Contain    ${HTML}    vntestexpense@yahoo.com has sent you an expense report to approve
+    Log    ${LATEST}
+    ${parts}=    Walk Multipart Email    ${LATEST}
+    Log    ${parts}
+    @{fields}=    Get Multipart Field Names
+    Log    ${fields}
+    ${from}=    Get Multipart Field    From
+    Log    ${from}
+    ${to}=    Get Multipart Field    To
+    Log    ${to}
+    ${subject}=    Get Multipart Field    Subjectwin active
+    Log    ${subject}
+    : FOR    ${i}    IN RANGE    ${parts}
+    \    Walk Multipart Email    ${LATEST}
+    \    ${content-type}=    Get Multipart Content Type
+    \    Log    ${content-type}
+    \    Continue For Loop If    '${content-type}' != 'text/html'
+    \    ${payload}=    Get Multipart Payload    decode=True
+    \    Log    ${payload}
+    \    Should Contain    ${payload}    <html><body><div style="color:#000; background-color:#fff; font-family:HelveticaNeue, Helvetica Neue, Helvetica, Arial, Lucida Grande, sans-serif;font-size:12pt"><div class="" style="">vntestexpense@yahoo.com has sent you an expense report to approve<br class="" style=""></div><div class="" style=""><br class="" style=""></div></div></body></html>
+    \    ${HTML}=    Open Link from Mail    ${LATEST}
+    \    Log    ${HTML}
+    \    Should Contain    ${HTML}    vntestexpense@yahoo.com has sent you an expense report to approve
+    Close Mailbox
+
+AUTOITLIBRARYYYYYYYYYYYYYYYYYYYY
+    #Create Bulk Expenses And Submit Unsubmited Report    2    Miscellaneous    Mobile    ${netsuite}
+    Log In    ${sever_test}    ${user_owner}    ${pass_owner}
+    Click Ec Link    expenses    active    ${EMPTY}
+    Wait Until Page Contains Element    xpath=.//div[@class='grid']//div[@data-row='0']//a[text()='Add']    ${TIMEWAIT}
+    Click Element    xpath=.//div[@class='grid']//div[@data-row='0']//a[text()='Add']
+    Wait Until Page Contains Element    xpath=.//div[@aria-labelledby='ui-dialog-title-frmAttachmentDialog'][contains(@style, 'display: block;')]    ${TIMEWAIT}
+    Sleep    3s
+    Click Element    xpath=.//div[@id='upload_receipt_btn']/input[@name='file']
+    #Win Wait Active    [CLASS:MozillaDialogClass]    ${EMPTY}    10
+    Sleep    3s
+    #Win Active    File Upload    File Upload
+    #Win Wait    File Upload    File Upload    ${TIMEWAIT}
+    #Control Focus    Edit1
+    Send    C:\\Users\\Public\\Pictures\\Sample Pictures\\Koala.jpg
+    Control Click    ${EMPTY}    &Open    Button1
+    #Click Button    Button1
+    Wait Until Page Contains Element    xpath=.//a[text()='koala.jpg']    ${TIMEOUT}
+    Click Link    link=Move to receipts folder
+    Click Element    xpath=.//span[text()='Ok']
+
+*** Keyword ***

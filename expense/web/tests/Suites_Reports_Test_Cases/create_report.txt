@@ -1,0 +1,113 @@
+*** Settings ***
+Documentation     /* Suite Create report */
+Suite Setup       Set Server
+Test Teardown     Close All Browsers
+Resource          ../../conf/selenium_connect.txt
+Library           Selenium2Library
+
+*** Test Cases ***
+TC_Create report
+    [Tags]    Smoke Testing    Create Report    Suites Export Reports    Completed    Not Mailinator
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Click Ec Link    expenses    active    ${EMPTY}
+    Wait Until Expense Active Page Load
+    Delete All Current Expenses If Exists
+    ${current_date}=    Get Current Day
+    ${date_ex01}=    Get Prev Date    ${current_date}    1
+    ${date_ex02}=    Get Prev Date    ${current_date}    32
+    ${date_ex03}=    Get Prev Date    ${current_date}    32
+    ${date_ex04}=    Get Prev Date    ${current_date}    32
+    Create Expense And Input Detail Values    ${date_ex01}    Expense_1    Hotels    ${EMPTY}    500    ${EMPTY}
+    ...    Sample_Prj    Sample_Client    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Expense And Input Detail Values    ${date_ex02}    Expense_2    Meals    ${EMPTY}    200    ${EMPTY}
+    ...    Sample_Prj    Sample_Client    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Expense And Input Detail Values    ${date_ex03}    Expense_3    Meals    ${EMPTY}    100    ${EMPTY}
+    ...    Sample_Prj    Sample_Client    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}
+    ...    ${EMPTY}    ${EMPTY}
+    Create Expense And Input Basic Values    ${date_ex04}    Expense_4    Meals    ${EMPTY}    100    ${EMPTY}
+    Select Main Menu    reports    create
+    Page Should Contain    Example Report Templates
+    Page Should Contain Textfield    id=ReportOutlineName
+    Page Should Contain Element    id=btnOneTimeReport
+    Page Should Contain Element    id=btnRecurringReport
+    Click Element    id=btnRecurringReport
+    Click Element    id=btnOneTimeReport
+    Page Should Contain Element    xpath=.//div[@id='oneTimeReport'][@style='display: block;']
+    Page Should Contain Element    id=ddl_ReportOutlineDateRange
+    Click Element    id=btnRecurringReport
+    Page Should Contain Element    xpath=.//div[@id='recurringReport'][@style='display: block;']
+    Page Should Contain Element    id=ReportOutlineRecurringType_chzn
+    Click Element    xpath=.//div[@id='ReportOutlineRecurringType_chzn']/a
+    Page Should Contain Element    xpath=.//div[@id='ReportOutlineRecurringType_chzn']//li[contains(.,'Monthly')]
+    Page Should Contain Element    xpath=.//div[@id='ReportOutlineRecurringType_chzn']//li[contains(.,'Weekly')]
+    Page Should Contain Element    xpath=.//div[@id='ReportOutlineRecurringType_chzn']//li[contains(.,'Trip')]
+    Page Should Contain Element    id=ddl_ReportOutlineRuleType
+    Click Element    xpath=.//div[@id='ddl_ReportOutlineRuleType']
+    Page Should Contain Element    xpath=.//div[@id='ddl_ReportOutlineRuleType']//li[contains(.,'All')]
+    Page Should Contain Element    xpath=.//div[@id='ddl_ReportOutlineRuleType']//li[contains(.,'Any')]
+    Click Element    xpath=.//div[@id='ddl_ReportOutlineRuleType']
+    Add More Filter
+    Add More Filter
+    Remover Filter
+    Remover Filter
+    Input Text    id=ReportOutlineName    Report_1
+    Click Element    id=btnOneTimeReport
+    Page Should Contain Element    id=ddl_ReportOutlineDateRange
+    Click Element    xpath=.//div[@id='ddl_ReportOutlineDateRange']//div[@class='ddl_l']
+    Page Should Contain Element    xpath=.//div[@id='ddl_ReportOutlineDateRange']//li[contains(.,'Last 7 days')]
+    Page Should Contain Element    xpath=.//div[@id='ddl_ReportOutlineDateRange']//li[contains(.,'Last 14 days')]
+    Page Should Contain Element    xpath=.//div[@id='ddl_ReportOutlineDateRange']//li[contains(.,'Last 30 days')]
+    Page Should Contain Element    xpath=.//div[@id='ddl_ReportOutlineDateRange']//li[contains(.,'This month')]
+    Page Should Contain Element    xpath=.//div[@id='ddl_ReportOutlineDateRange']//li[contains(.,'Last month')]
+    Page Should Contain Element    xpath=.//div[@id='ddl_ReportOutlineDateRange']//li[contains(.,'Choose custom dates')]
+    Click Element    xpath=.//div[@id='ddl_ReportOutlineDateRange']//div[@class='ddl_l']
+    Select Dropdown Type Div    ddl_ReportOutlineDateRange    This month
+    Select Dropdown Type Div    ddl_ReportOutlineRuleType    All
+    Sleep    2s
+    Select Dropdown Type Div    ddl_ReportOutlineRulesOperand    Category
+    Select Dropdown Type Div    ddl_ReportOutlineRulesOperator    Is
+    Select Dropdown Type Div    ddl_ReportOutlineRulesValue    Hotels
+    Add More Filter
+    Select Dropdown Type Div    ddl_reportRulesOperand2    Client
+    Select Dropdown Type Div    ddl_reportRulesOperator2    Contains
+    Input Text    id=reportInputRulesValue2    Sample_Client
+    Click Element    xpath=.//div[@class='ec-button btn-round-silver right']//span[contains(.,'Save')]
+    Wait Until Page Contains    Expense_1    ${TIMEOUT}
+    Page Should Contain    Expense_1
+    Page Should Not Contain    Expense_2
+    Page Should Not Contain    Expense_3
+    Page Should Not Contain    Expense_4
+    Select Main Menu    reports    create
+    Input Text    id=ReportOutlineName    Report_2
+    Click Element    id=btnOneTimeReport
+    Select Dropdown Type Div    ddl_ReportOutlineDateRange    Last month
+    Select Dropdown Type Div    ddl_ReportOutlineRuleType    All
+    Sleep    2s
+    Select Dropdown Type Div    ddl_ReportOutlineRulesOperand    Category
+    Select Dropdown Type Div    ddl_ReportOutlineRulesOperator    Is
+    Select Dropdown Type Div    ddl_ReportOutlineRulesValue    Meals
+    Add More Filter
+    Select Dropdown Type Div    ddl_reportRulesOperand2    Client
+    Select Dropdown Type Div    ddl_reportRulesOperator2    Contains
+    Input Text    id=reportInputRulesValue2    Sample_Client
+    Click Element    xpath=.//div[@class='ec-button btn-round-silver right']//span[contains(.,'Save')]
+    Wait Until Page Contains    Expense_2    ${TIMEOUT}
+    Page Should Contain    Expense_2
+    Page Should Contain    Expense_3
+    Page Should Not Contain    Expense_1
+    Page Should Not Contain    Expense_4
+    Sleep    2s
+
+*** Keyword ***
+Add More Filter
+    [Documentation]    SUITE_KEY: Add filter for create report page
+    Click Button    xpath=.//li[@id='1']//button[contains(.,'Add')]
+
+Remover Filter
+    [Documentation]    SUITE_KEY: Remover filter for create report page
+    Click Button    xpath=.//ul[@id='groupRulesWrapper']/li[2]//button[contains(.,'Remove')]

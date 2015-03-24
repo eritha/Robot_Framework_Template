@@ -1,0 +1,158 @@
+*** Settings ***
+Documentation     /* LIST KEYWORD REUSE FOR REPORT */
+Library           Selenium2Library
+Resource          ../../conf/selenium_connect.txt
+
+*** Variables ***
+${xpath_ec_checkbox_all}    xpath=.//div[@id='grid']//input[@class='lhv-table-select-all']
+
+*** Keywords ***
+Create Bulk Expenses And Submit Unsubmited Report
+    [Arguments]    ${num_expense}    ${parent}    ${child}    ${lable_merchant}
+    [Documentation]    COMMON_KEY: Delete All expenses, create with number expense and submit unsubmited report with all current expense
+    Log In    ${sever_test}    ${user_owner}    ${pass_general}
+    Select Main Menu    reports    user
+    Wait Until Report Page Load
+    Delete All Unsubmited Report
+    Delete All Current Expenses If Exists
+    Create Category Map    # Get list category into ${cat_map}
+    Create Bulk Expenses    ${num_expense}    ${parent}    ${child}    ${lable_merchant}    ${cat_map}
+    Submit Report All Curent Expense
+    Verify report created successfully
+
+Submit Report All Curent Expense
+    [Documentation]    SUB keyword for "Create Bulk Expenses And Submit Unsubmited Report": Select all expenses and submit create report
+    Wait Until Expense Active Page Load
+    Sleep    1s
+    Wait Until Page Contains Element    ${xpath_ec_checkbox_all}    ${TIMEWAIT}
+    Select Checkbox    ${xpath_ec_checkbox_all}    # Select check box all expenses
+    ${value}    Run Keyword And Return Status    Checkbox Should Be Selected    ${xpath_ec_checkbox_all}
+    Run Keyword If    ${value}    Log    Checkbox is selected    ELSE    Select Checkbox    ${xpath_ec_checkbox_all}
+    Click Element    btnCreateReport    # Click button create report
+    Wait Until Page Contains Element    ${xpath_ec_total}    1m    # Wait until toltal number expenses displayed
+    ${ec_re_total}=    Get Text    ${xpath_ec_total}
+    Should Be True    ${ec_re_total}    # Passes if ${ec_re_total} is not zero
+
+Verify report created successfully
+    [Documentation]    Verify report created from all current expense
+    ...    SUB keyword for "Create Bulk Expenses And Submit Unsubmited Report".
+    Click Ec Link    expenses    active    ${EMPTY}
+    #>>> Output: Verify Report name is shown in Report field in Air Travel line
+    ${yyyy}    ${mm}    ${dd}    Get Time    year,month,day
+    #${report_date}    Set Variable    ${yyyy}/${mm}/${dd}    # Get format date
+    ${report_date}=    Get Date Time Zone    America/Tijuana    %m/%d/%Y    # Get time zone from califonia
+    ${reportName}=    Catenate    Report for    ${user_owner}    ${report_date}    # Get report name with date submit
+    ${value}    Run Keyword And Return Status    Page should contain    ${reportName}
+    Run Keyword If    ${value}    Log    Report name verified    ELSE    Loop To Verify Report Name    ${reportName}
+    ...    20
+
+Loop To Verify Report Name
+    [Arguments]    ${reportName}    ${cut_leng}
+    [Documentation]    SUB keyword for "Verify report created successfully":
+    ...    Cut report for each charactor and verify / ${cut_leng}= Leng of string '@yahoo.com 10/09/2014'
+    ${report_leng}=    Get Length    ${reportName}
+    : FOR    ${i}    IN RANGE    0    ${cut_leng}
+    \    Log    ${i}
+    \    ${value}    Run Keyword And Return Status    Page should contain    ${reportName[:${report_leng}-${i}]}
+    \    Run Keyword If    ${value}    Exit For Loop
+
+Delete All Reports
+    [Documentation]    COMMON_KEY: Delete All reports, even reports lock.
+    Click Ec Link    reports    user    ${EMPTY}    # Select ec link
+    Wait Until Report Page Load
+    Select Dropdown    filterStatus_chzn    Submitted Reports    # Select dropdown report filter
+    Wait Until Report Page Load
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//p[@class='lhv-grid-cross-cell'][contains(.,'Your report list is empty.')]
+    Run Keyword If    ${value}    Log    Empty submited reports.    ELSE    Unlock Report With For Loop    Submitted Reports
+    ...    # Check and unlock all report locked
+    Select Dropdown    filterStatus_chzn    All Reports
+    Sleep    3s
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//p[@class='lhv-grid-cross-cell'][contains(.,'Your report list is empty.')]
+    Run Keyword If    ${value}    Log    All reports deleted.    ELSE    Select Checkbox All and Submit Delete    # Delete all reports
+
+Delete All Unsubmited Report
+    [Documentation]    COMMON_KEY: User filter "Unsubmitted Reports", then delete all reports.
+    Select Dropdown    filterStatus_chzn    Unsubmitted Reports    # Select dropdown Unsubmitted Reports
+    Select Checkbox All and Submit Delete
+
+Select Checkbox All and Submit Delete
+    [Documentation]    COMMON_KEY: After filter report type, user select checkbox all and submit button delete
+    Wait Until Report Page Load
+    ${val_checkbox_all}    Run Keyword And Return Status    Page Should Not Contain Element    xpath=.//div[@class='lhv-thead'][@style='display: none;']//input[@class='lhv-table-select-all']
+    Run Keyword If    ${val_checkbox_all}    Select Checkbox    xpath=.//input[@class='lhv-table-select-all']
+    Run Keyword If    ${val_checkbox_all}    Click Element    id=btnDeleteReport
+    #${val_list_report}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//p[@class='lhv-grid-cross-cell'][contains(.,'Your report list is empty.')]
+    ${val_comfirm_dialog}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]
+    Run Keyword If    ${val_comfirm_dialog}    Click Element    id=btnConfirmYes    ELSE    Log    Your report list is empty.
+    Wait Until Report Page Load
+
+Unlock Report With For Loop
+    [Arguments]    ${report_type}
+    [Documentation]    SUB keyword for "Delete All Reports": Unlock All Unsubmited reports.
+    ${ec_re_total}=    Get Text    ${xpath_ec_total}    # Get number report locked
+    : FOR    ${I}    IN RANGE    0    ${ec_re_total}
+    \    Recall Submited Report    ${report_type}    # Recall to unlock report locked
+
+Recall Submited Report
+    [Arguments]    ${report_type}
+    [Documentation]    SUB keyword for "Unlock Report With For Loop": Recall submmited reports.
+    Sleep    1s
+    Click Element    xpath=.//div[@data-row='0']//a[1]
+    Wait Until Page Contains Element    id=lnkUnlockReport    ${TIMEOUT}    # Wait UnlockReport link displayed
+    Click Element    id=lnkUnlockReport
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[contains(@class,'ui-dialog')][contains(@style,'display: block;')]
+    Run Keyword If    ${value}    Click Element    id=btnAllowRecall    # Click link recall
+    Wait Until Page Contains Element    xpath=.//ul[@id='reportSummary']//i[contains(.,'Unsubmitted')]    ${TIMEOUT}    # Wait recall successfull
+    Go Back
+    Wait Until Report Page Load
+    Select Dropdown    filterStatus_chzn    ${report_type}
+
+Wait Until Report Page Load
+    [Documentation]    COMMON_KEY: Wait expense report page load.
+    Sleep    ${TIMESLEEP}
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[contains(@class, 'lhv-table-footer')]//a[@class="lhv-table-show"]    ${TIMEMAX}
+    Run Keyword If    ${value}    Log    All reports displayed.    ELSE    Wait Until Page Contains    Your report list is empty.
+    ...    ${TIMEWAIT}
+
+Wait Until Report Detail Page Load
+    [Documentation]    COMMON_KEY: Wait expense active page load
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//div[@id='gridReportExpenses']//div[@data-row='0']/div[@data-col='1']    2m
+    Run Keyword If    ${value}    Log    Report displayed details with expense list.    ELSE    Wait Until Page Contains    No Expenses
+    ...    ${TIMEWAIT}
+
+Select Dropdown
+    [Arguments]    ${id_dropdown}    ${value_select}
+    [Documentation]    COMMON_KEY: Dropdown for Create Expense, Filter Report
+    Click Element    xpath=.//div[@id='${id_dropdown}']/a    # Click into dropdown
+    Page Should Contain Element    xpath=.//div[@id='${id_dropdown}']//li[text()='${value_select}']    # Verify value select
+    Click Element    xpath=.//div[@id='${id_dropdown}']//li[text()='${value_select}']    # Click value select
+    Sleep    1s
+
+Select Dropdown Type Div
+    [Arguments]    ${id_dropdown}    ${value_select}
+    [Documentation]    COMMON_KEY: Dropdown for Page: Report/Create
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[@class='ddl_group'][contains(@style,'display: block;')]
+    Run Keyword If    '${value}' == 'False'    Click Element    xpath=.//div[@id='${id_dropdown}']    # Click dropdown
+    Sleep    1s
+    Mouse Over    xpath=.//div[@id='${id_dropdown}']//ul/li[@class='ddl_option'][contains(text(),'${value_select}')]    # Verify value select
+    Click Element    xpath=.//div[@id='${id_dropdown}']//ul/li[@class='ddl_option'][contains(text(),'${value_select}')]    # Click value select
+    Sleep    1s
+
+Select Dropdown With Input Text
+    [Arguments]    ${id_ec_report}    ${value_ec_report}
+    [Documentation]    COMMON_KEY: Keyword select dropdown with input text.
+    Click Element    xpath=.//div[@id='${id_ec_report}']/a    # Click dropdown
+    Page Should Contain Element    xpath=.//div[@id='${id_ec_report}']//input    # Check field input value
+    Input Text    xpath=.//div[@id='${id_ec_report}']//input    ${value_ec_report}    # Input value dropdown
+    Press Key    xpath=.//div[@id='${id_ec_report}']//input    \\13    # Press Enter key
+
+Select Report Grid Row
+    [Arguments]    ${row_number}
+    [Documentation]    COMMON_KEY: Click report row in grid by row number
+    Wait Until Page Contains Element    xpath=.//div[@class='grid']//div[@data-row='${row_number}']/div[@data-col='2']    ${TIMEWAIT}    # Wait report with row number =${row_number} display
+    Click Element    xpath=.//div[@id='grid']//div[contains(@class,'${row_number}')]/div[contains(@class,'c2')]/a    # Select the first report unsubmited row
+
+Report Row Should Contain Link
+    [Arguments]    ${row_number}    ${link_text}
+    [Documentation]    COMMON_KEY: Verify report row contain link text
+    Page should Contain Element    xpath=.//div[@class='grid']//div[@data-row='${row_number}']//*[contains(text(),'${link_text}')]

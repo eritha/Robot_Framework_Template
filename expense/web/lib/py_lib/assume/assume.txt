@@ -1,0 +1,6 @@
+#This will be the library that Integrates the Assume keyword.  My goal is to allow the user to use Assume to navigate anywhere in the webapp given an inside and outside list of page titles.  This will use a state transition algorithm to find the shortest path first.
+#
+#
+#Written by:  John Hautzinger
+#
+#

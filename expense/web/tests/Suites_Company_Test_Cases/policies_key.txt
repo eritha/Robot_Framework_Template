@@ -1,0 +1,132 @@
+*** Settings ***
+Documentation     /* COMMON KEY for Suite Company Test Cases */
+Resource          ../../conf/selenium_connect.txt
+
+*** Keywords ***
+Set Basic Company Policies
+    [Arguments]    ${receipt_for_amounts}    ${ex_turned_within_days}    ${max_ex_amount}    ${max_ex_distance}    ${ex_can_submitted_as_Unknown}
+    [Documentation]    COMMON_KEY: Add new policies for expense with basic company policies.
+    ...    Ex: Add Basic Company Policies | 30 | ${EMPTY} | ${EMPTY} | 500 | Yes
+    Click Setting Menu    ${EMPTY}    companies    policies
+    Input Basic Company Policies    ${receipt_for_amounts}    ${ex_turned_within_days}    ${max_ex_amount}    ${max_ex_distance}    ${ex_can_submitted_as_Unknown}
+    Click Element    xpath=.//form[@id='PolicyPoliciesForm']//span[text()='Save']
+
+Input Basic Company Policies
+    [Arguments]    ${receipt_for_amounts}    ${ex_turned_within_days}    ${max_ex_amount}    ${max_ex_distance}    ${ex_can_submitted_as_Unknown}
+    [Documentation]    COMMON_KEY: Input basic company policies
+    Input Text    id=PolicyReceiptPolicy    ${receipt_for_amounts}
+    Input Text    id=PolicyTurnedDayPolicy    ${ex_turned_within_days}
+    Input Text    id=PolicyAmountPolicy    ${max_ex_amount}
+    Input Text    id=PolicyMileageAmountPolicy    ${max_ex_distance}
+    Run Keyword If    '${ex_can_submitted_as_Unknown}' == '${EMPTY}'    Log    Radio not select.    ELSE IF    '${ex_can_submitted_as_Unknown.capitalize()}' == 'Yes'    Click Element
+    ...    xpath=.//form[@id='PolicyPoliciesForm']//input[@id='YesCategoryPolicy']    ELSE IF    '${ex_can_submitted_as_Unknown.capitalize()}' == 'No'    Click Element    xpath=.//form[@id='PolicyPoliciesForm']//input[@id='NoCategoryPolicy']    ELSE
+    ...    Log    Value for "Expenses can be submitted as 'Unknown' category" wrong format Yes/No.    warn
+
+Set Company Per Diem Policies
+    [Arguments]    ${frequency}    ${allowable_amount_of}    ${for_category}    ${location_rule}    ${location_name}
+    [Documentation]    COMMON_KEY: Add new company per diem policies for expense with basic company policies.
+    Input Company Per Diem Policies    ${frequency}    ${allowable_amount_of}    ${for_category}    ${location_rule}    ${location_name}
+    Click Element    xpath=.//div[@id='createPerDiemPoliciesCont']/div[3]/div[2]/i/i/span    # Click Save
+
+Input Company Per Diem Policies
+    [Arguments]    ${frequency}    ${allowable_amount_of}    ${for_category}    ${location_rule}    ${location_name}
+    [Documentation]    COMMON_KEY: Set Company Per Diem Policies
+    Select Dropdown Type Div    ddl_per_diem_template    ${frequency}
+    Input Text    id=per_diem_amount    ${allowable_amount_of}
+    Select Dropdown Type Div    ddl_per_diem_category    ${for_category}
+    Run Keyword If    '${location_rule}' == '${EMPTY}'    Run keyword01    ELSE    Run keyword02
+
+Run keyword01
+    Wait Until Page Contains    Company Per Diem Policies
+
+Run keyword02
+    Click Button    id=btn_perdiem_add_location
+    Select Dropdown Type Div    ddl_per_diem_location_operator    ${location_rule}
+    Run Keyword If    '${location_rule}' == 'Cannot be blank'    Run keyword07    ELSE    Run keyword08
+
+Run keyword07
+    #    Element Should Be Disabled    xpath=.//div[2]/i/i/span
+    Wait Until Page Contains    Company Per Diem Policies
+
+Run keyword08
+    Input Text    id=per_diem_location_value    ${location_name}
+
+Set Advance Company Policies
+    [Arguments]    ${name_of_policy}    ${desc_of_policy}    ${adv_when}    ${adv_category}    ${adv_condition}    ${adv_result_drop}
+    ...    ${adv_result_input}    ${adv_require}    ${adv_variable}    ${adv_conditionB}    ${adv_field_drop}    ${adv_field_input}
+    ...    ${adv_category2}    ${adv_condition2}    ${adv_result_drop2}    ${adv_result_input2}    ${adv_category3}    ${adv_condition3}
+    ...    ${adv_result_drop3}    ${adv_result_input3}
+    [Documentation]    COMMON_KEY: Add new policies for expense with advance company policies.
+    ...    Ex: Add Advance Company Policies | Name Your Policy | Description Of Policy | Any | Category | Is | Air Travel | Any | Amount | Is less than | 3000
+    Click Setting Menu    ${EMPTY}    companies    policies
+    Input Advance Company Policies    ${name_of_policy}    ${desc_of_policy}    ${adv_when}    ${adv_category}    ${adv_condition}    ${adv_result_drop}
+    ...    ${adv_result_input}    ${adv_require}    ${adv_variable}    ${adv_conditionB}    ${adv_field_drop}    ${adv_field_input}
+    ...    ${adv_category2}    ${adv_condition2}    ${adv_result_drop2}    ${adv_result_input2}    ${adv_category3}    ${adv_condition3}
+    ...    ${adv_result_drop3}    ${adv_result_input3}
+    Sleep    3s
+    Click Element    xpath=//div[@id='createPoliciesCont']/div[3]/div[2]/i/i
+
+Input Advance Company Policies
+    [Arguments]    ${name_of_policy}    ${desc_of_policy}    ${adv_when}    ${adv_category}    ${adv_condition}    ${adv_result_drop}
+    ...    ${adv_result_input}    ${adv_require}    ${adv_variable}    ${adv_conditionB}    ${adv_field_drop}    ${adv_field_input}
+    ...    ${adv_category2}    ${adv_condition2}    ${adv_result_drop2}    ${adv_result_input2}    ${adv_category3}    ${adv_condition3}
+    ...    ${adv_result_drop3}    ${adv_result_input3}
+    [Documentation]    COMMON_KEY: Input advance company policies
+    Input Text    advanceName    ${name_of_policy}
+    Input Text    advanceDescription    ${desc_of_policy}
+    Select Dropdown Type Div    ddl_rule_type1    ${adv_when}
+    Select Dropdown Type Div    ddl_operand1-1    ${adv_category}
+    Select Dropdown Type Div    ddl_operator1-1    ${adv_condition}
+    Run Keyword If    '${adv_result_drop}' == '${EMPTY}'    Run keyword03    ELSE    Select Dropdown Type Div    ddl_value1-1    ${adv_result_drop}
+    Sleep    3s
+    Run Keyword If    '${adv_category2}' != '${EMPTY}'    Run keyword05    # ELSE    Select Dropdown Type Div    ddl_value2-1    ${adv_field_drop}
+    Sleep    3s
+    Run Keyword If    '${adv_category3}' != '${EMPTY}'    Run keyword06    # ELSE    Select Dropdown Type Div    ddl_value2-1    ${adv_field_drop}
+    Sleep    3s
+    Select Dropdown Type Div    ddl_rule_type2    ${adv_require}
+    Select Dropdown Type Div    ddl_operand2-1    ${adv_variable}
+    Select Dropdown Type Div    ddl_operator2-1    ${adv_conditionB}
+    Run Keyword If    '${adv_field_drop}' == '${EMPTY}'    Run keyword04    ELSE    Select Dropdown Type Div    ddl_value2-1    ${adv_field_drop}
+
+Run keyword03
+    Input Text    input_value1-1    ${adv_result_input}
+
+Run keyword04
+    Input Text    input_value2-1    ${adv_field_input}
+
+Run keyword05
+    Click Element    xpath=.//*[@id='group1-1']/button    # Click button add
+    Sleep    3s
+    Select Dropdown Type Div    ddl_operand1-2    ${adv_category2}
+    Select Dropdown Type Div    ddl_operator1-2    ${adv_condition2}
+    Run Keyword If    '${adv_result_drop2}' == '${EMPTY}'    Input Text    input_value1-2    ${adv_result_input2}    ELSE    Select Dropdown Type Div
+    ...    ddl_value1-2    ${adv_result_drop2}
+
+Run keyword06
+    Click Element    xpath=.//*[@id='group1-1']/button    # Click button add
+    Sleep    3s
+    Select Dropdown Type Div    ddl_operand1-3    ${adv_category3}
+    Select Dropdown Type Div    ddl_operator1-3    ${adv_condition3}
+    Run Keyword If    '${adv_result_drop3}' == '${EMPTY}'    Input Text    input_value1-3    ${adv_result_input3}    ELSE    Select Dropdown Type Div
+    ...    ddl_value1-3    ${adv_result_drop3}
+
+Set Basic Company Policies Clear
+    Set Basic Company Policies    ${EMPTY}    ${EMPTY}    ${EMPTY}    ${EMPTY}    Yes
+
+Delete All Company Per Diem Policies Policies
+    [Documentation]    COMMON_KEY: Delete all company policies
+    Click Setting Menu    ${EMPTY}    companies    policies
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[@id='myPerDiemPoliciesCont']/ul/li[1]/label/button[@title='Click to Delete!']
+    Run Keyword If    ${value}    Click Element    xpath=.//div[@id='myPerDiemPoliciesCont']/ul/li[1]/label/button[@title='Click to Delete!']    ELSE    Log    Deleted All Company Per Diem Policies.
+    Wait Until Page Contains    Create Per Diem    ${TIMEOUT}
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[@id='myPerDiemPoliciesCont']/ul/li[1]/label/button[@title='Click to Delete!']
+    Run Keyword If    ${value}    Delete All Company Per Diem Policies Policies    ELSE    Log    Deleted All Company Per Diem Policies.
+
+Delete All Company Expense Policies
+    [Documentation]    COMMON_KEY: Delete all company expense policies
+    Click Setting Menu    ${EMPTY}    companies    policies
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[@id='myPoliciesCont']/ul/li[1]/label/button[@title='Click to Delete!']
+    Run Keyword If    ${value}    Click Element    xpath=.//div[@id='myPoliciesCont']/ul/li[1]/label/button[@title='Click to Delete!']    ELSE    Log    Deleted All Company Expense Policies.
+    Wait Until Page Contains    Create Policy    ${TIMEOUT}
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//div[@id='myPoliciesCont']/ul/li[1]/label/button[@title='Click to Delete!']
+    Run Keyword If    ${value}    Delete All Company Expense Policies    ELSE    Log    All expense company policies are deleted.

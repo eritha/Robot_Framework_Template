@@ -1,0 +1,157 @@
+*** Settings ***
+Documentation     /* COMMON KEY for Suite Settings Test Cases */
+Resource          ../../conf/selenium_connect.txt
+Library           Selenium2Library
+
+*** Keywords ***
+Delete All Current Connections Or Integrations
+    [Documentation]    COMMON_KEY: Deletes all current connections or integrations setup.
+    ${value}    Run Keyword And Return Status    Page Should Not Contain Element    xpath=.//*[@class="link delete tooltip"][@oldtitle="Delete"]
+    Log    ${value}
+    Run Keyword If    '${value}' == 'False'    Click Element    xpath=.//*[@class="link delete tooltip"][@oldtitle="Delete"]
+    Sleep    2s
+    Wait Until Page Contains    Add more integrations    7s
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//*[@class="link delete tooltip"][@oldtitle="Delete"]
+    Run Keyword If    ${value}    Delete All Current Connections Or Integrations
+
+Verify All Connections Or Integrations Deleted
+    [Documentation]    COMMON_KEY: Verify all connections or integrations deleted.
+    Verify A Connection Or Integration Not Exist    Approver
+    Verify A Connection Or Integration Not Exist    Approver2
+    Verify A Connection Or Integration Not Exist    Bookkeeper
+    Verify A Connection Or Integration Not Exist    Netsuite
+    Verify A Connection Or Integration Not Exist    Intacct
+    Verify A Connection Or Integration Not Exist    Freshbooks
+    Verify A Connection Or Integration Not Exist    CSV
+    Verify A Connection Or Integration Not Exist    Payroll
+    #Verify Integration Not Exist    PayrollCsv
+
+Verify A Connection Or Integration Existed
+    [Arguments]    ${inte_name}    ${inter_email}
+    [Documentation]    COMMON_KEY: Verify a connection or integration existed on report setup page
+    Wait Until Page Contains    ${inter_email}    7s
+    Verify Page Should Contain Connection Or Integration Link    ${inte_name}    Set default
+    Verify Page Should Contain Connection Or Integration Link    ${inte_name}    Edit
+    Verify Page Should Contain Connection Or Integration Link    ${inte_name}    Delete
+    ${value}    Run Keyword And Return Status    Page Should Not Contain Link    /mappings/integration/${inte_name}
+    Run Keyword If    '${value}' == 'False'    Page Should Contain Link    /mappings/integration/${inte_name}    ELSE    Log    The new integration "${inte_name}" not exist.
+    ...    warn
+
+Verify A Connection Or Integration Not Exist
+    [Arguments]    ${inte_name}
+    [Documentation]    COMMON_KEY: Verify a integration deleted, check link set default, exit and delete not exist
+    Wait Until Page Contains Element    xpath=.//p[@name='${inte_name}Integration']/button[contains(.,'Set up')]    7s
+    Verify Page Should Not Contain Connection Or Integration Link    ${inte_name}    Set default
+    Verify Page Should Not Contain Connection Or Integration Link    ${inte_name}    Edit
+    Verify Page Should Not Contain Connection Or Integration Link    ${inte_name}    Delete
+
+Verify Dropdown Not Contain Any Integrations
+    [Arguments]    ${id_dropdown_report}
+    [Documentation]    COMMON_KEY: Verify delete all integration in dropdown
+    Dropdown Should Not Contain Connection Or Integration    ${id_dropdown_report}    My Approver
+    Dropdown Should Not Contain Connection Or Integration    ${id_dropdown_report}    Next Approver
+    Dropdown Should Not Contain Connection Or Integration    ${id_dropdown_report}    My Bookkeeper
+    Dropdown Should Not Contain Connection Or Integration    ${id_dropdown_report}    ${netsuite} - ${netsuite_account_id} - ${user_owner}
+    Dropdown Should Not Contain Connection Or Integration    ${id_dropdown_report}    ${intacct} - ${intacct_company_id} - ${user_owner}
+    Dropdown Should Not Contain Connection Or Integration    ${id_dropdown_report}    Freshbooks
+    Dropdown Should Not Contain Connection Or Integration    ${id_dropdown_report}    CSV
+    Dropdown Should Not Contain Connection Or Integration    ${id_dropdown_report}    Payroll
+    Dropdown Should Not Contain Connection Or Integration    ${id_dropdown_report}    PayrollCsv
+    Page Should Contain Element    xpath=.//*[@id='${id_dropdown_report}']//li[contains(.,'Archive as Personal')]
+
+Dropdown Should Not Contain Connection Or Integration
+    [Arguments]    ${id_dropdown_report}    ${inte_name}
+    [Documentation]    COMMON_KEY: Verify delete the integration in dropdown
+    Click Element    xpath=.//div[@id='${id_dropdown_report}']/a
+    Page Should Not Contain Element    xpath=.//*[@id='${id_dropdown_report}']//li[text()='${inte_name}']
+
+Dropdown Should Contain Connection Or Integration
+    [Arguments]    ${id_dropdown_report}    ${inte_name}
+    [Documentation]    COMMON_KEY: Verify delete the integration in dropdown
+    #Click Element    xpath=.//div[@id='${id_dropdown_report}']/a
+    #Page Should Contain Element    xpath=.//*[@id='${id_dropdown_report}']//li[text()='${inte_name}']
+    Wait Until Page Contains Element    xpath=.//*[@id='${id_dropdown_report}']//li[text()='${inte_name}']    ${TIMESLEEP}
+
+Dropdown Contain Default Connection Or Integration
+    [Arguments]    ${id_dropdown_report}    ${inte_name}
+    [Documentation]    COMMON_KEY: Verify delete the integration in dropdown
+    Page Should Contain Element    xpath=.//*[@id='${id_dropdown_report}']/a[contains(.,'${inte_name}')]
+
+Setup A Connection In Setting Page
+    [Arguments]    ${inte_name}    ${inter_email}
+    [Documentation]    COMMON_KEY: Install Integration. (Keyword for Approve: Approver, Next Approve: Approver2 , Bookkeeper: Bookkeeper)
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//p[@name='${inte_name}Integration']/button[contains(.,'Set up')]    7s
+    Log    ${value}
+    Run Keyword If    ${value}    Setup A Connection In Report Settings    ${inte_name}    ${inter_email}    ELSE    Log
+    ...    The ${inte_name} have installed.
+
+Setup A Connection In Report Settings
+    [Arguments]    ${inte_name}    ${inter_email}
+    [Documentation]    COMMON_KEY: Click button setup Integration, input email and submit.
+    Click Element    xpath=.//p[@name='${inte_name}Integration']/button[contains(.,'Set up')]
+    Page Should Contain Element    reportSubmissionReport
+    Input Text    ${inte_name.lower()}To    ${inter_email}
+    Click Element    xpath=.//div[@id='${inte_name}Integration']//button[contains(.,'Save')]
+    Wait Until Page Contains    ${inter_email}
+
+Mark Default The Connection Or Integration
+    [Arguments]    ${inte_name}
+    [Documentation]    COMMON_KEY: Mark default integration
+    ${value}    Run Keyword And Return Status    Wait Until Page Contains Element    xpath=.//p[@name='${inte_name}Integration']/span[@oldtitle='Set default']    7s
+    Log    ${value}
+    Run Keyword If    ${value}    Click Connection Or Integration Link    ${inte_name}    Set default    ELSE    Log
+    ...    The ${inte_name} Integration not found.    warn
+
+Verify Link Mark Default The Connection Or Integration
+    [Arguments]    ${inte_name}
+    [Documentation]    COMMON_KEY: Verify integration mark default
+    Page Should Contain Element    xpath=.//li[contains(@class,'default')]/p[@name='${inte_name}Integration']/span[@oldtitle='Set default']
+
+Click Connection Or Integration Link
+    [Arguments]    ${inte_name}    ${link_name}
+    [Documentation]    COMMON_KEY: Click integration name
+    Click Element    xpath=.//p[@name='${inte_name}Integration']/span[@oldtitle='${link_name}']
+
+Hover Connection Or Integration Link
+    [Arguments]    ${inte_name}    ${link_name}
+    [Documentation]    COMMON_KEY: Hover integration link
+    Wait Until Page Contains Element    xpath=.//p[@name='${inte_name}Integration']/span[@oldtitle='${link_name}']
+    Mouse Over    xpath=.//p[@name='${inte_name}Integration']/span[@oldtitle='${link_name}']
+    Sleep    1s
+
+Verify Page Should Contain Connection Or Integration Link
+    [Arguments]    ${inte_name}    ${link_name}
+    [Documentation]    COMMON_KEY: Verify Integration contain link
+    Page Should Contain Element    xpath=.//p[@name='${inte_name}Integration']/span[@oldtitle='${link_name}']
+
+Verify Page Should Not Contain Connection Or Integration Link
+    [Arguments]    ${inte_name}    ${link_name}
+    [Documentation]    COMMON_KEY: Verify Integration not contain link
+    Page Should Not Contain Element    xpath=.//p[@name='${inte_name}Integration']/span[@oldtitle='${link_name}']
+
+Delete Default Connection Or Integration
+    [Documentation]    COMMON_KEY: Delete the default connection or integration.
+    ${value}    Run Keyword And Return Status    Page Should Not Contain Element    xpath=.//li[contains(@class,'default')]//span[@oldtitle="Delete"]
+    Log    ${value}
+    Run Keyword If    '${value}' == 'False'    Click Element    xpath=.//li[contains(@class,'default')]//span[@oldtitle="Delete"]    ELSE    Log    The default integration "${inte_name}" not exist.
+    ...    warn
+    Sleep    2s
+    Wait Until Page Contains    Add more integrations    7s
+
+Verify Set Default Other Connection Or Integration
+    [Documentation]    COMMON_KEY: Verify system set default for other connection or integation
+    Page Should Contain Element    xpath=.//li[contains(@class,'default')]//span[@oldtitle="Delete"]
+
+Delete Connection Or Integration By Name If Exist
+    [Arguments]    ${inte_name}
+    [Documentation]    COMMON_KEY: Delete all current connection or integration by name for Integrations:[Arguments] ${inte_name}
+    ...    Ex: Delete Integrations By Name If Exists: Approver; Approver2; Bookkeeper; Intacct; Netsuite; Qboe (Quick book online).
+    ${value}    Run Keyword And Return Status    Page Should Not Contain Element    xpath=.//p[@name='${inte_name}Integration']/span[@oldtitle="Delete"]
+    Log    ${value}
+    Run Keyword If    '${value}' == 'False'    Click Connection Or Integration Link    ${inte_name}    Delete    ELSE    Log
+    ...    The integration "${inte_name}" not exist.
+    Sleep    2s
+    Wait Until Page Contains    Add more integrations    7s
+    Sleep    5s
+    ${value}    Run Keyword And Return Status    Page Should Contain Element    xpath=.//p[@name='${inte_name}Integration']/span[@oldtitle="Delete"]
+    Run Keyword If    ${value}    Delete Connection Or Integration By Name If Exist    ${inte_name}    ELSE    Log    The integration "${inte_name}" have been deleted.
